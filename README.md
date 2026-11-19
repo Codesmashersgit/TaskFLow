@@ -70,7 +70,7 @@ TaskFlow is a production-minded team task management application built with Reac
 
 This repository deploys as two Vercel Services in one project. In Vercel project settings, select **Services** as the project framework. The Services feature may require access to its beta.
 
-- `backend` builds from `backend/` with the Express framework.
+- `backend` builds from `backend/` with the Express framework and `src/server.js` entrypoint.
 - `frontend` builds from `frontend/` with the Vite framework.
 - `/api/(.*)` is routed publicly to `backend`; all other paths are routed to `frontend`.
 - The frontend uses the same-origin `/api` path, so there is no service-to-service binding. The browser reaches the backend through the public rewrite.
