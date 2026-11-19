@@ -1,6 +1,6 @@
-# TaskFlow
+# TaskFlow — Employee Task Dashboard
 
-TaskFlow is a production-minded team task management application built with React, Express, and PostgreSQL. It supports two account roles—**Admin** and **Employee**—with secure cookie authentication, project workspaces, task assignment, workflow views, checklists, and database-derived dashboards.
+TaskFlow is an employee task dashboard for teams to assign, organize, and track project work. Admins manage employees and projects, add employees to project workspaces, and assign tasks. Employees can review their assigned work, due dates, priorities, and checklist progress, then move tasks through the workflow. The application is built with React, Express, and PostgreSQL, with separate Admin and Employee roles.
 
 ## Features
 
