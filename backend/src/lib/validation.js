@@ -3,6 +3,7 @@ const { AppError } = require('../errors/app-error')
 const statuses = ['Backlog', 'Todo', 'In Progress', 'In Review', 'Done']
 const priorities = ['Low', 'Medium', 'High']
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const idPattern = /^(?:[a-f\d]{24}|[a-f\d]{8}-[a-f\d]{4}-[1-5][a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12})$/i
 
 function invalid(message) {
   throw new AppError(message, 400, 'VALIDATION_ERROR')
@@ -50,12 +51,12 @@ function validateTaskBody(body, partial = false) {
   }
   if (Object.hasOwn(body, 'assignee')) {
     if (body.assignee === null || body.assignee === '') task.assignee = null
-    else if (typeof body.assignee !== 'string' || !/^[a-f\d]{24}$/i.test(body.assignee)) invalid('Assignee must be a valid user ID')
+    else if (typeof body.assignee !== 'string' || !idPattern.test(body.assignee)) invalid('Assignee must be a valid user ID')
     else task.assignee = body.assignee
   }
   if (Object.hasOwn(body, 'parentTask')) {
     if (body.parentTask === null || body.parentTask === '') task.parentTask = null
-    else if (typeof body.parentTask !== 'string' || !/^[a-f\d]{24}$/i.test(body.parentTask)) invalid('Parent task must be a valid task ID')
+    else if (typeof body.parentTask !== 'string' || !idPattern.test(body.parentTask)) invalid('Parent task must be a valid task ID')
     else task.parentTask = body.parentTask
   }
   if (Object.hasOwn(body, 'labels')) {

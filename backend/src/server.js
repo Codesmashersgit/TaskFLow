@@ -6,16 +6,16 @@ const { createApp } = require('./app')
 
 async function start() {
   const config = loadConfig()
-  await connectDatabase(config.mongodbUri)
-  const app = createApp({ frontendOrigin: config.frontendOrigin })
+  await connectDatabase(config.databaseUrl)
+  const app = createApp({ frontendOrigin: config.frontendOrigin, frontendOrigins: config.frontendOrigins })
   const server = app.listen(config.port, () => {
     console.log(`TaskFlow API listening on port ${config.port}`)
   })
 
   const shutdown = async () => {
     server.close()
-    const mongoose = require('mongoose')
-    await mongoose.disconnect()
+    const { closeDatabase } = require('./db/connect')
+    await closeDatabase()
   }
   process.once('SIGINT', shutdown)
   process.once('SIGTERM', shutdown)

@@ -29,6 +29,7 @@ export default function SettingsDialog({ user, onClose, onSave }) {
         <form className="task-form" onSubmit={submit}>
           <label className="form-field"><span>Your name</span><input required maxLength="80" value={name} onChange={(event) => setName(event.target.value)} /></label>
           <label className="form-field"><span>Email address</span><input disabled value={user.email} /><small className="field-hint">Email address changes are not available in this version.</small></label>
+          <label className="form-field"><span>Workspace role</span><input disabled value={user.role === 'admin' ? 'Administrator' : 'Employee'} /></label>
           <div className="settings-divider" />
           <p className="settings-label"><Bell size={15} /> Notifications</p>
           <label className="preference-row"><span><b>In-app notifications</b><small>Assignment and project activity updates</small></span><input type="checkbox" checked={inAppNotifications} onChange={(event) => setInAppNotifications(event.target.checked)} /></label>

@@ -11,6 +11,7 @@ import ProjectDialog from './components/ProjectDialog'
 import SettingsDialog from './components/SettingsDialog'
 import TaskDetails from './components/TaskDetails'
 import TaskDialog from './components/TaskDialog'
+import TeamDialog from './components/TeamDialog'
 import { api, jsonBody } from './lib/api'
 
 const STATUSES = ['Backlog', 'Todo', 'In Progress', 'In Review', 'Done']
@@ -122,6 +123,8 @@ export default function App() {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [teamOpen, setTeamOpen] = useState(false)
+  const [team, setTeam] = useState([])
   const currentProject = projects.find((project) => project._id === activeProjectId) || null
   const projectsById = useMemo(() => Object.fromEntries(projects.map((project) => [project._id, project])), [projects])
   const taskQueryKey = [activeProjectId, navView, projects.map((project) => `${project._id}:${project.status}`).join(','), search.trim(), statusFilter, priorityFilter, assigneeFilter, sort, refreshKey].join('|')
@@ -156,6 +159,14 @@ export default function App() {
         if (!active) return
         setProjects([...activeResult.projects, ...archivedResult.projects])
         setNotifications(noticeResult.notifications)
+        if (user.role === 'admin') {
+          try {
+            const teamResult = await api('/auth/admin/team')
+            if (active) setTeam(teamResult.team)
+          } catch (requestError) {
+            if (active && requestError.status !== 403) reportError(requestError)
+          }
+        }
         if (activeProjectId && ![...activeResult.projects, ...archivedResult.projects].some((project) => project._id === activeProjectId)) setActiveProjectId('')
       } catch (requestError) {
         if (active) reportError(requestError)
@@ -364,6 +375,22 @@ export default function App() {
     setToast('Your preferences were saved.')
   }
 
+  async function createEmployee(fields) {
+    const { employee } = await api('/auth/admin/employees', { method: 'POST', body: jsonBody(fields) })
+    setTeam((current) => [...current, { ...employee, stats: { total: 0, completed: 0, open: 0 } }])
+    setToast(`${employee.name} was added as an employee.`)
+  }
+
+  async function updateTeamMember(memberId, fields) {
+    try {
+      const { member } = await api(`/auth/admin/team/${memberId}`, { method: 'PATCH', body: jsonBody(fields) })
+      setTeam((current) => current.map((item) => item.id === member.id ? { ...item, ...member } : item))
+      setToast('Team member updated.')
+    } catch (requestError) {
+      setError(requestError.message)
+    }
+  }
+
   async function logout() {
     try {
       await api('/auth/logout', { method: 'POST' })
@@ -418,18 +445,19 @@ export default function App() {
     <div className="app-shell">
       <aside className={`sidebar ${mobileNavOpen ? 'sidebar-open' : ''}`}>
         <div className="sidebar-brand"><a href="/" className="brand"><span className="brand-mark"><Command size={18} /></span><span>taskflow<span className="brand-period">.</span></span></a><button className="icon-button mobile-close" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)}><X size={18} /></button></div>
-        <button className="workspace-switcher"><span className="workspace-mark">{initials(user.name)}</span><span><b>{user.name.split(' ')[0]}’s workspace</b><small>Personal workspace</small></span><ChevronDown size={15} /></button>
+        <button className="workspace-switcher"><span className="workspace-mark">{initials(user.name)}</span><span><b>{user.name.split(' ')[0]}’s workspace</b><small>{user.role === 'admin' ? 'Admin workspace' : 'Employee workspace'}</small></span><ChevronDown size={15} /></button>
         <div className="nav-caption">WORKSPACE</div>
         <nav className="sidebar-nav" aria-label="Workspace navigation">
           <button className={`nav-item ${navView === 'overview' && !currentProject ? 'nav-active' : ''}`} onClick={() => { setActiveProjectId(''); setNavView('overview'); setMobileNavOpen(false) }}><LayoutDashboard size={17} />Overview</button>
           <button className={`nav-item ${navView === 'my-tasks' ? 'nav-active' : ''}`} onClick={() => { setActiveProjectId(''); setNavView('my-tasks'); setMobileNavOpen(false) }}><ClipboardList size={17} />My tasks <span className="nav-count">{stats.assigned}</span></button>
           <button className={`nav-item ${navView === 'focus' ? 'nav-active' : ''}`} onClick={() => { setActiveProjectId(''); setNavView('focus'); setMobileNavOpen(false) }}><Sparkles size={17} />Today’s focus</button>
+          {user.role === 'admin' && <button className="nav-item" onClick={() => { setTeamOpen(true); setMobileNavOpen(false) }}><Users size={17} />Team management</button>}
         </nav>
-        <div className="nav-caption project-nav-caption"><span>PROJECTS</span><button className="icon-button" aria-label="Create a project" onClick={() => setProjectDialog(null)}><Plus size={16} /></button></div>
+        <div className="nav-caption project-nav-caption"><span>PROJECTS</span>{user.role === 'admin' && <button className="icon-button" aria-label="Create a project" onClick={() => setProjectDialog(null)}><Plus size={16} /></button>}</div>
         <nav className="sidebar-nav project-nav" aria-label="Projects">
           {activeProjects.map((project) => <button key={project._id} className={`nav-item project-nav-item ${activeProjectId === project._id ? 'nav-active' : ''}`} onClick={() => openProject(project)}><i className={`project-swatch color-${project.color}`} /><span className="project-nav-name">{project.name}</span><span className="project-nav-count">{project.stats?.total || 0}</span></button>)}
-          {!activeProjects.length && <p className="sidebar-hint">Create a project to start organizing shared work.</p>}
-          <button className="nav-item add-project-nav" onClick={() => setProjectDialog(null)}><Plus size={16} />New project</button>
+          {!activeProjects.length && <p className="sidebar-hint">{user.role === 'admin' ? 'Create a project to start organizing shared work.' : 'Assigned projects will appear here.'}</p>}
+          {user.role === 'admin' && <button className="nav-item add-project-nav" onClick={() => setProjectDialog(null)}><Plus size={16} />New project</button>}
           {archivedProjects.length > 0 && <button className={`nav-item archived-nav ${navView === 'archived' ? 'nav-active' : ''}`} onClick={() => { setActiveProjectId(''); setNavView('archived'); setMobileNavOpen(false) }}><Archive size={16} />Archived <span className="nav-count">{archivedProjects.length}</span></button>}
         </nav>
         <div className="sidebar-bottom">
@@ -452,14 +480,14 @@ export default function App() {
             <>
               <section className="page-heading">
                 <div><span className="eyebrow eyebrow-light">{currentProject ? <><span className={`project-swatch color-${currentProject.color}`} /> PROJECT SPACE</> : navView === 'my-tasks' ? 'YOUR ASSIGNED WORK' : navView === 'focus' ? 'DUE TODAY' : 'TEAM WORKSPACE'}</span><h1>{currentProject ? currentProject.name : navView === 'overview' ? `Good to see you, ${user.name.split(' ')[0]}.` : heading}</h1><p>{currentProject?.description || (currentProject ? `${currentProject.members?.length || 1} members · Updated ${dateLabel(currentProject.updatedAt)}` : navView === 'overview' ? 'Here’s what’s moving across your projects today.' : navView === 'my-tasks' ? 'A clear view of the work assigned to you.' : 'Your tasks with a deadline today.')}</p></div>
-                <div className="page-heading-actions">{currentProject && <div className="member-stack" aria-label={`${currentProject.members?.length || 1} project members`}>{currentProject.members?.slice(0, 4).map((member) => <Avatar key={member.user._id || member.user.id} name={member.user.name} size="small" />)}{currentProject.members?.length > 4 && <span className="avatar avatar-small avatar-overflow">+{currentProject.members.length - 4}</span>}</div>}<button className="button button-primary" onClick={() => currentProject ? setTaskDialog({ task: null, projectId: currentProject._id }) : setProjectDialog(null)}><Plus size={16} />{currentProject ? 'New task' : 'New project'}</button></div>
+                <div className="page-heading-actions">{currentProject && <div className="member-stack" aria-label={`${currentProject.members?.length || 1} project members`}>{currentProject.members?.slice(0, 4).map((member) => <Avatar key={member.user._id || member.user.id} name={member.user.name} size="small" />)}{currentProject.members?.length > 4 && <span className="avatar avatar-small avatar-overflow">+{currentProject.members.length - 4}</span>}</div>}{(currentProject && user.role === 'admin') || (!currentProject && user.role === 'admin') ? <button className="button button-primary" onClick={() => currentProject ? setTaskDialog({ task: null, projectId: currentProject._id }) : setProjectDialog(null)}><Plus size={16} />{currentProject ? 'New task' : 'New project'}</button> : null}</div>
               </section>
 
               {navView === 'overview' && !currentProject && <section className="stat-grid" aria-label="Task statistics"><StatCard label="Total tasks" value={stats.total} note={`${activeProjects.length} active projects`} icon={ClipboardList} tone="indigo" /><StatCard label="Assigned to me" value={stats.assigned} note="Across all projects" icon={Users} tone="blue" /><StatCard label="To do" value={stats.pending} note="Ready to be picked up" icon={CheckCircle2} tone="green" /><StatCard label="In progress" value={stats.inProgress} note="Moving forward" icon={Activity} tone="amber" /><StatCard label="Completed" value={stats.completed} note={stats.total ? `${Math.round((stats.completed / stats.total) * 100)}% of total tasks` : 'Ready when you are'} icon={CheckCircle2} tone="green" /><StatCard label="Overdue" value={stats.overdue} note={stats.overdue ? 'Needs attention' : 'All deadlines clear'} icon={Clock3} tone="rose" /></section>}
 
               {currentProject && <section className="stat-grid project-stat-grid" aria-label="Project task statistics"><StatCard label="Project tasks" value={stats.total} note={`${currentProject.members?.length || 1} project members`} icon={ClipboardList} tone="indigo" /><StatCard label="To do" value={stats.pending} note="Ready to be picked up" icon={CheckCircle2} tone="blue" /><StatCard label="In progress" value={stats.inProgress} note="Moving through the workflow" icon={Activity} tone="amber" /><StatCard label="Completed" value={stats.completed} note={stats.total ? `${Math.round((stats.completed / stats.total) * 100)}% complete` : 'Ready when you are'} icon={CheckCircle2} tone="green" /><StatCard label="Overdue" value={stats.overdue} note={stats.overdue ? 'Needs attention' : 'Deadlines on track'} icon={Clock3} tone="rose" /></section>}
 
-              {navView === 'overview' && !currentProject && <section className="overview-row"><div className="overview-callout"><span className="callout-icon"><Sparkles size={17} /></span><div><b>Small, steady progress adds up.</b><p>Keep your team aligned and make the next step visible.</p></div><button onClick={() => setProjectDialog(null)}>Create a project <ArrowRight size={14} /></button></div><div className="deadline-mini"><div className="section-heading-compact"><div><h3>Upcoming deadlines</h3><p>Next 7 days</p></div><CalendarDays size={17} /></div>{getUpcomingTasks(tasks).map((task) => <button className="deadline-row" key={task._id} onClick={() => openTask(task)}><span className={`deadline-mark color-${projectsById[task.project]?.color || 'violet'}`} /><span><b>{task.title}</b><small>{projectsById[task.project]?.name}</small></span><time>{dateLabel(task.dueDate)}</time></button>)}{!getUpcomingTasks(tasks).length && <p className="deadline-empty">No deadlines in the next week.</p>}</div></section>}
+              {navView === 'overview' && !currentProject && <section className="overview-row"><div className="overview-callout"><span className="callout-icon"><Sparkles size={17} /></span><div><b>Small, steady progress adds up.</b><p>Keep your team aligned and make the next step visible.</p></div>{user.role === 'admin' && <button onClick={() => setProjectDialog(null)}>Create a project <ArrowRight size={14} /></button>}</div><div className="deadline-mini"><div className="section-heading-compact"><div><h3>Upcoming deadlines</h3><p>Next 7 days</p></div><CalendarDays size={17} /></div>{getUpcomingTasks(tasks).map((task) => <button className="deadline-row" key={task._id} onClick={() => openTask(task)}><span className={`deadline-mark color-${projectsById[task.project]?.color || 'violet'}`} /><span><b>{task.title}</b><small>{projectsById[task.project]?.name}</small></span><time>{dateLabel(task.dueDate)}</time></button>)}{!getUpcomingTasks(tasks).length && <p className="deadline-empty">No deadlines in the next week.</p>}</div></section>}
 
               <section className="work-section">
                 <div className="work-section-head"><div><div className="section-title-line"><h2>{currentProject ? 'Project work' : navView === 'focus' ? 'Today’s focus' : navView === 'my-tasks' ? 'Assigned tasks' : 'Recently updated'}</h2><span className="count-pill">{loading ? '…' : overviewTasks.length}</span></div><p>{currentProject ? 'Plan, assign, and move work through your workflow.' : 'A live view of work across your accessible projects.'}</p></div>
@@ -467,7 +495,7 @@ export default function App() {
                 </div>
                 {filtersOpen && <div className="filter-panel"><label>Status<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="All">All statuses</option>{STATUSES.map((status) => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}</select></label><label>Priority<select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}><option value="All">All priorities</option><option>High</option><option>Medium</option><option>Low</option></select></label>{currentProject && <label>Assignee<select value={assigneeFilter} onChange={(event) => setAssigneeFilter(event.target.value)}><option value="All">Everyone</option><option value="unassigned">Unassigned</option>{currentProject.members?.map((member) => <option value={member.user._id || member.user.id} key={member.user._id || member.user.id}>{member.user.name}</option>)}</select></label>}<label>Deadline<select value={dueFilter} onChange={(event) => setDueFilter(event.target.value)}><option>All</option><option>Today</option><option>Upcoming</option><option>Overdue</option></select></label><button className="text-action" onClick={() => { setStatusFilter('All'); setPriorityFilter('All'); setAssigneeFilter('All'); setDueFilter('All') }}>Clear filters</button></div>}
 
-                {!activeProjects.length && !currentProject ? <EmptyState title="Start with a shared project" description="Create a project, invite teammates, and organize work in one place." icon={Users} action={() => setProjectDialog(null)} actionLabel="Create your first project" /> : loading ? <div className="loading-state"><span className="spinner spinner-dark" />Loading project work…</div> : !overviewTasks.length ? <EmptyState title={search || statusFilter !== 'All' || priorityFilter !== 'All' ? 'No matching tasks' : 'Nothing on the board yet'} description={search ? 'Try another search or clear your filters.' : 'Create a task to give this project its first next step.'} icon={ClipboardList} action={currentProject ? () => setTaskDialog({ task: null, projectId: currentProject._id }) : undefined} actionLabel="Create task" /> : view === 'board' && currentProject ? <div className="kanban-board">{STATUSES.map((status) => { const columnTasks = overviewTasks.filter((task) => task.status === status); return <section key={status} className="kanban-column" onDragOver={(event) => event.preventDefault()} onDrop={(event) => dropTask(event, status)}><header className="column-header"><span className={`column-indicator status-${status.toLowerCase().replace(' ', '-')}`} /><h3>{STATUS_LABELS[status]}</h3><span className="column-count">{columnTasks.length}</span><button className="icon-button" aria-label={`Create task in ${status}`} onClick={() => setTaskDialog({ task: null, projectId: currentProject._id, defaultStatus: status })}><Plus size={15} /></button></header><div className="column-cards">{columnTasks.map((task) => <TaskCard key={task._id} task={task} project={currentProject} onOpen={openTask} onStatus={changeStatus} onDragStart={dragStart} />)}</div></section> })}</div> : view === 'list' || !currentProject ? <TaskTable tasks={overviewTasks} projectsById={projectsById} onOpen={openTask} onStatus={changeStatus} /> : <CalendarView tasks={overviewTasks} onOpen={openTask} />}
+                {!activeProjects.length && !currentProject ? <EmptyState title={user.role === 'admin' ? 'Start with a shared project' : 'No assigned projects yet'} description={user.role === 'admin' ? 'Create a project, invite teammates, and organize work in one place.' : 'Your admin will assign projects and tasks to you.'} icon={Users} action={user.role === 'admin' ? () => setProjectDialog(null) : undefined} actionLabel="Create your first project" /> : loading ? <div className="loading-state"><span className="spinner spinner-dark" />Loading project work…</div> : !overviewTasks.length ? <EmptyState title={search || statusFilter !== 'All' || priorityFilter !== 'All' ? 'No matching tasks' : 'Nothing on the board yet'} description={search ? 'Try another search or clear your filters.' : 'Create a task to give this project its first next step.'} icon={ClipboardList} action={currentProject && user.role === 'admin' ? () => setTaskDialog({ task: null, projectId: currentProject._id }) : undefined} actionLabel="Create task" /> : view === 'board' && currentProject ? <div className="kanban-board">{STATUSES.map((status) => { const columnTasks = overviewTasks.filter((task) => task.status === status); return <section key={status} className="kanban-column" onDragOver={(event) => event.preventDefault()} onDrop={(event) => dropTask(event, status)}><header className="column-header"><span className={`column-indicator status-${status.toLowerCase().replace(' ', '-')}`} /><h3>{STATUS_LABELS[status]}</h3><span className="column-count">{columnTasks.length}</span>{user.role === 'admin' && <button className="icon-button" aria-label={`Create task in ${status}`} onClick={() => setTaskDialog({ task: null, projectId: currentProject._id, defaultStatus: status })}><Plus size={15} /></button>}</header><div className="column-cards">{columnTasks.map((task) => <TaskCard key={task._id} task={task} project={currentProject} onOpen={openTask} onStatus={changeStatus} onDragStart={dragStart} />)}</div></section> })}</div> : view === 'list' || !currentProject ? <TaskTable tasks={overviewTasks} projectsById={projectsById} onOpen={openTask} onStatus={changeStatus} /> : <CalendarView tasks={overviewTasks} onOpen={openTask} />}
               </section>
 
               {currentProject && <section className="project-footer"><div><Users size={15} /><span>{currentProject.members?.length || 1} project members</span><button className="text-action" onClick={() => setProjectDialog(currentProject)}>Manage members</button></div><button className="project-archive-action" onClick={() => setProjectDialog(currentProject)}><MoreHorizontal size={16} />Project settings</button></section>}
@@ -481,6 +509,7 @@ export default function App() {
       {projectDialog !== undefined && <ProjectDialogOverlay project={projectDialog} currentUserId={user.id} onClose={() => setProjectDialog(undefined)} onSave={projectDialog ? updateProject : createProject} onArchive={archiveProject} onRestore={restoreProject} onAddMember={addProjectMember} onRemoveMember={removeProjectMember} />}
       {taskDetails && <TaskDetails task={taskDetails} project={projectsById[taskDetails.project]} onClose={() => setTaskDetails(null)} onEdit={editTask} onDelete={deleteTask} onDuplicate={duplicateTask} onComment={addComment} onToggleCheck={toggleChecklist} onAddSubtask={(task) => { setTaskDetails(null); setTaskDialog({ task: null, projectId: task.project, parentTask: task }) }} onOpenTask={openTask} />}
       {settingsOpen && <SettingsDialog user={user} onClose={() => setSettingsOpen(false)} onSave={updateProfile} />}
+      {teamOpen && <TeamDialog team={team} onClose={() => setTeamOpen(false)} onCreateEmployee={createEmployee} onUpdateMember={updateTeamMember} />}
       {toast && <div className="toast" role="status"><Check size={15} />{toast}<button aria-label="Dismiss notification" onClick={() => setToast('')}><X size={15} /></button></div>}
     </div>
   )

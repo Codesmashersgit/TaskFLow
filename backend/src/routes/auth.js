@@ -1,8 +1,7 @@
 const express = require('express')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
-const User = require('../models/user')
-const Notification = require('../models/notification')
+const { repository } = require('../db/repository')
 const { AppError } = require('../errors/app-error')
 const { validateAuthBody } = require('../lib/validation')
 const { requireAuth, COOKIE_NAME } = require('../middleware/auth')
@@ -19,10 +18,11 @@ function createAuthRouter({ jwtSecret, jwtExpiresIn = '1d', isProduction = false
     try {
       const { name, email, password } = validateAuthBody(req.body, true)
       const passwordHash = await bcrypt.hash(password, 12)
-      const user = await User.create({ name, email, passwordHash })
+      if (await repository.findUserByEmail(email)) throw new AppError('An account with this email already exists', 409, 'EMAIL_EXISTS')
+      const user = await repository.createUser({ name, email, passwordHash })
       const token = jwt.sign({}, jwtSecret, { subject: user.id, expiresIn: jwtExpiresIn })
       res.cookie(COOKIE_NAME, token, { ...cookieSettings(isProduction), maxAge: 24 * 60 * 60 * 1000 })
-      res.status(201).json({ user: { id: user.id, name: user.name, email: user.email } })
+      res.status(201).json({ user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status } })
     } catch (error) {
       if (error.code === 11000) return next(new AppError('An account with this email already exists', 409, 'EMAIL_EXISTS'))
       return next(error)
@@ -32,13 +32,14 @@ function createAuthRouter({ jwtSecret, jwtExpiresIn = '1d', isProduction = false
   router.post('/login', async (req, res, next) => {
     try {
       const { email, password } = validateAuthBody(req.body, false)
-      const user = await User.findOne({ email }).select('+passwordHash')
+      const user = await repository.findUserByEmail(email)
+      if (user?.status === 'disabled') throw new AppError('This account has been disabled', 403, 'ACCOUNT_DISABLED')
       if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
         throw new AppError('Email or password is incorrect', 401, 'INVALID_CREDENTIALS')
       }
       const token = jwt.sign({}, jwtSecret, { subject: user.id, expiresIn: jwtExpiresIn })
       res.cookie(COOKIE_NAME, token, { ...cookieSettings(isProduction), maxAge: 24 * 60 * 60 * 1000 })
-      res.json({ user: { id: user.id, name: user.name, email: user.email } })
+      res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status } })
     } catch (error) {
       next(error)
     }
@@ -51,9 +52,9 @@ function createAuthRouter({ jwtSecret, jwtExpiresIn = '1d', isProduction = false
 
   router.get('/me', auth, async (req, res, next) => {
     try {
-      const user = await User.findById(req.userId).select('name email avatar preferences')
+      const user = await repository.findUserById(req.userId)
       if (!user) throw new AppError('Session is invalid or expired', 401, 'UNAUTHORIZED')
-      res.json({ user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar, preferences: user.preferences } })
+      res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status, avatar: user.avatar, preferences: user.preferences } })
     } catch (error) {
       next(error)
     }
@@ -78,9 +79,10 @@ function createAuthRouter({ jwtSecret, jwtExpiresIn = '1d', isProduction = false
         for (const [key, value] of Object.entries(preferences)) updates[`preferences.${key}`] = value
       }
       if (Object.keys(updates).length === 0) throw new AppError('Provide profile fields to update', 400, 'VALIDATION_ERROR')
-      const user = await User.findByIdAndUpdate(req.userId, { $set: updates }, { new: true }).select('name email avatar preferences')
+      const preferences = req.body.preferences ? { emailNotifications: req.body.preferences.emailNotifications, inAppNotifications: req.body.preferences.inAppNotifications } : undefined
+      const user = await repository.updateUser(req.userId, { name: updates.name, preferences })
       if (!user) throw new AppError('User not found', 404, 'NOT_FOUND')
-      res.json({ user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar, preferences: user.preferences } })
+      res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status, avatar: user.avatar, preferences: user.preferences } })
     } catch (error) {
       next(error)
     }
@@ -88,7 +90,7 @@ function createAuthRouter({ jwtSecret, jwtExpiresIn = '1d', isProduction = false
 
   router.get('/notifications', auth, async (req, res, next) => {
     try {
-      const notifications = await Notification.find({ user: req.userId }).sort({ createdAt: -1 }).limit(30).lean()
+      const notifications = await repository.notifications(req.userId)
       res.json({ notifications })
     } catch (error) {
       next(error)
@@ -97,11 +99,56 @@ function createAuthRouter({ jwtSecret, jwtExpiresIn = '1d', isProduction = false
 
   router.patch('/notifications/read', auth, async (req, res, next) => {
     try {
-      await Notification.updateMany({ user: req.userId, readAt: null }, { $set: { readAt: new Date() } })
+      await repository.markNotificationsRead(req.userId)
       res.status(204).end()
     } catch (error) {
       next(error)
     }
+  })
+
+  async function requireAdmin(req) {
+    const user = await repository.findUserById(req.userId)
+    if (!user || user.role !== 'admin' || user.status !== 'active') {
+      throw new AppError('Admin access is required', 403, 'FORBIDDEN')
+    }
+  }
+
+  router.get('/admin/team', auth, async (req, res, next) => {
+    try {
+      await requireAdmin(req)
+      res.json({ team: await repository.listTeam() })
+    } catch (error) { next(error) }
+  })
+
+  router.post('/admin/employees', auth, async (req, res, next) => {
+    try {
+      await requireAdmin(req)
+      const { name, email, password } = validateAuthBody(req.body, true)
+      if (await repository.findUserByEmail(email)) throw new AppError('An account with this email already exists', 409, 'EMAIL_EXISTS')
+      const passwordHash = await bcrypt.hash(password, 12)
+      const employee = await repository.createEmployee({ name, email, passwordHash })
+      res.status(201).json({ employee: { id: employee.id, name: employee.name, email: employee.email, role: employee.role, status: employee.status } })
+    } catch (error) { next(error) }
+  })
+
+  router.patch('/admin/team/:memberId', auth, async (req, res, next) => {
+    try {
+      await requireAdmin(req)
+      const member = await repository.findUserById(req.params.memberId)
+      if (!member) throw new AppError('Team member not found', 404, 'NOT_FOUND')
+      let updated = member
+      if (Object.hasOwn(req.body || {}, 'role')) {
+        if (!['admin', 'employee'].includes(req.body.role)) throw new AppError('Role must be admin or employee', 400, 'VALIDATION_ERROR')
+        if (member.id === req.userId && req.body.role !== 'admin') throw new AppError('You cannot remove your own admin role', 400, 'VALIDATION_ERROR')
+        updated = await repository.setTeamMemberRole(member.id, req.body.role)
+      }
+      if (Object.hasOwn(req.body || {}, 'status')) {
+        if (!['active', 'disabled'].includes(req.body.status)) throw new AppError('Status must be active or disabled', 400, 'VALIDATION_ERROR')
+        if (member.id === req.userId && req.body.status !== 'active') throw new AppError('You cannot disable your own account', 400, 'VALIDATION_ERROR')
+        updated = await repository.setTeamMemberStatus(member.id, req.body.status)
+      }
+      res.json({ member: { id: updated.id, name: updated.name, email: updated.email, role: updated.role, status: updated.status } })
+    } catch (error) { next(error) }
   })
 
   return router

@@ -65,7 +65,7 @@ export default function TaskDialog({ task, members, parentTask, defaultStatus, o
           </div>
           <div className="form-row">
             <label className="form-field"><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value)}>{TASK_STATUSES.map((value) => <option key={value}>{value}</option>)}</select></label>
-            <label className="form-field"><span>Assignee</span><select value={assignee} onChange={(event) => setAssignee(event.target.value)}><option value="">Unassigned</option>{members.map((member) => <option key={member.user._id || member.user.id} value={member.user._id || member.user.id}>{member.user.name}</option>)}</select></label>
+            <label className="form-field"><span>Assignee</span><select value={assignee} onChange={(event) => setAssignee(event.target.value)}><option value="">Unassigned</option>{members.map((member) => <option key={member.user._id || member.user.id} value={member.user._id || member.user.id}>{member.user.name} · {member.user.email}</option>)}</select><small className="field-hint">{members.length > 1 ? "Only people added to this project can be assigned." : "Add employees in Project settings → Manage members before assigning this task."}</small></label>
           </div>
           <label className="form-field"><span><Tag size={14} /> Labels <small>Separate with commas</small></span><input placeholder="Design, Q3 launch" value={labels} onChange={(event) => setLabels(event.target.value)} /></label>
           <label className="form-field"><span>Checklist <small>One item per line</small></span><textarea rows="3" placeholder={'Draft outline\nReview with team'} value={checklist} onChange={(event) => setChecklist(event.target.value)} /></label>

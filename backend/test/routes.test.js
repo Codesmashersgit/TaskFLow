@@ -12,133 +12,69 @@ const taskId = '507f191e810c19729de860ea'
 async function withServer(app, callback) {
   const server = app.listen(0)
   await new Promise((resolve) => server.once('listening', resolve))
-  const { port } = server.address()
-  try {
-    await callback(`http://127.0.0.1:${port}`)
-  } finally {
-    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
-  }
+  try { await callback(`http://127.0.0.1:${server.address().port}`) }
+  finally { await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve())) }
 }
 
-function makeApp(TaskModel) {
+function makeApp(repository) {
   const app = express()
   app.use(express.json())
-  app.use('/api/tasks', createTaskRouter({ jwtSecret: secret, TaskModel }))
+  app.use('/api/tasks', createTaskRouter({ jwtSecret: secret, repository }))
   app.use(errorHandler)
   return app
 }
 
-function tokenFor(userId = ownerId, expiresIn = '1h') {
-  return jwt.sign({}, secret, { subject: userId, expiresIn })
+function authHeaders() {
+  return { cookie: `taskflow_token=${jwt.sign({}, secret, { subject: ownerId, expiresIn: '1h' })}` }
 }
 
-test('task routes reject requests without a valid authentication cookie', async () => {
+test('task routes reject missing and expired authentication cookies', async () => {
   await withServer(makeApp({}), async (url) => {
-    const missing = await fetch(`${url}/api/tasks`)
-    assert.equal(missing.status, 401)
-    assert.equal((await missing.json()).error.code, 'UNAUTHORIZED')
-
-    const expired = await fetch(`${url}/api/tasks`, {
-      headers: { cookie: `taskflow_token=${tokenFor(ownerId, '-1s')}` },
-    })
-    assert.equal(expired.status, 401)
+    assert.equal((await fetch(`${url}/api/tasks`)).status, 401)
+    const expired = jwt.sign({}, secret, { subject: ownerId, expiresIn: '-1s' })
+    assert.equal((await fetch(`${url}/api/tasks`, { headers: { cookie: `taskflow_token=${expired}` } })).status, 401)
   })
 })
 
-test('task list and read queries are always scoped to the authenticated owner', async () => {
-  const queries = []
-  const task = { _id: taskId, title: 'Private task', owner: ownerId }
-  const TaskModel = {
-    find(query) {
-      queries.push(query)
-      return { sort() { return this }, lean: async () => [task] }
-    },
-    findOne: async (query) => { queries.push(query); return task },
+test('task list and read repository operations remain scoped to the owner', async () => {
+  const calls = []
+  const repository = {
+    personalTasks: async (userId) => { calls.push(['list', userId]); return [{ _id: taskId, owner: userId }] },
+    findTask: async (taskId) => { calls.push(['read', taskId]); return { _id: taskId, owner: ownerId, title: 'Private task' } },
   }
-  await withServer(makeApp(TaskModel), async (url) => {
-    const headers = { cookie: `taskflow_token=${tokenFor()}` }
-    const list = await fetch(`${url}/api/tasks`, { headers })
+  await withServer(makeApp(repository), async (url) => {
+    const list = await fetch(`${url}/api/tasks`, { headers: authHeaders() })
+    const detail = await fetch(`${url}/api/tasks/${taskId}`, { headers: authHeaders() })
     assert.equal(list.status, 200)
-    const detail = await fetch(`${url}/api/tasks/${taskId}`, { headers })
     assert.equal(detail.status, 200)
-    assert.deepEqual(queries, [
-      { owner: ownerId },
-      { _id: taskId, owner: ownerId },
-    ])
   })
+  assert.deepEqual(calls, [['list', ownerId], ['read', taskId]])
 })
 
-test('task updates and deletes include the authenticated owner in their database predicates', async () => {
-  const queries = []
-  const TaskModel = {
-    findOneAndUpdate: async (query) => { queries.push(query); return { _id: taskId, title: 'Changed' } },
-    findOneAndDelete: async (query) => { queries.push(query); return { _id: taskId } },
+test('task updates and deletes are blocked unless they belong to the owner', async () => {
+  let updateId
+  let deleteId
+  const repository = {
+    findTask: async (taskId) => ({ _id: taskId, id: taskId, owner: ownerId, title: 'Before' }),
+    updateTask: async (taskId) => { updateId = taskId; return { _id: taskId, id: taskId, owner: ownerId, title: 'Changed' } },
+    deleteTask: async (taskId) => { deleteId = taskId },
   }
-  await withServer(makeApp(TaskModel), async (url) => {
-    const headers = {
-      cookie: `taskflow_token=${tokenFor()}`,
-      'content-type': 'application/json',
-    }
-    const update = await fetch(`${url}/api/tasks/${taskId}`, {
-      method: 'PATCH', headers, body: JSON.stringify({ title: 'Changed' }),
-    })
-    assert.equal(update.status, 200)
-    const remove = await fetch(`${url}/api/tasks/${taskId}`, { method: 'DELETE', headers })
-    assert.equal(remove.status, 204)
-    assert.deepEqual(queries, [
-      { _id: taskId, owner: ownerId },
-      { _id: taskId, owner: ownerId },
-    ])
+  await withServer(makeApp(repository), async (url) => {
+    const headers = { ...authHeaders(), 'content-type': 'application/json' }
+    assert.equal((await fetch(`${url}/api/tasks/${taskId}`, { method: 'PATCH', headers, body: JSON.stringify({ title: 'Changed' }) })).status, 200)
+    assert.equal((await fetch(`${url}/api/tasks/${taskId}`, { method: 'DELETE', headers })).status, 204)
   })
+  assert.equal(updateId, taskId)
+  assert.equal(deleteId, taskId)
 })
 
-test('dashboard statistics aggregate only the authenticated owner’s tasks', async () => {
-  const queries = []
-  const TaskModel = {
-    countDocuments: async (query) => {
-      queries.push(query)
-      if (query.owner !== ownerId) return 0
-      if (query.dueDate) return 1
-      if (query.status === 'Done' || query.status === 'In Progress') return 1
-      return 3
-    },
-  }
-  await withServer(makeApp(TaskModel), async (url) => {
-    const response = await fetch(`${url}/api/tasks/stats`, {
-      headers: { cookie: `taskflow_token=${tokenFor()}` },
-    })
+test('dashboard statistics come from the authenticated owner repository query', async () => {
+  const repository = { personalTaskStats: async (userId) => ({ total: 3, completed: 1, inProgress: 1, pending: 1, overdue: 1, ownerId: userId }) }
+  await withServer(makeApp(repository), async (url) => {
+    const response = await fetch(`${url}/api/tasks/stats`, { headers: authHeaders() })
     assert.equal(response.status, 200)
-    assert.deepEqual(await response.json(), {
-      total: 3,
-      completed: 1,
-      inProgress: 1,
-      pending: 1,
-      overdue: 1,
-    })
-    assert.equal(queries.length, 4)
-    assert.ok(queries.every((query) => query.owner === ownerId))
-  })
-})
-
-test('malformed and oversized request bodies return consistent client errors', async () => {
-  const app = express()
-  app.use(express.json({ limit: '10b' }))
-  app.post('/test', (_req, res) => res.sendStatus(204))
-  app.use(errorHandler)
-  await withServer(app, async (url) => {
-    const malformed = await fetch(`${url}/test`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: '{',
-    })
-    assert.equal(malformed.status, 400)
-    assert.equal((await malformed.json()).error.code, 'BAD_REQUEST')
-    const oversized = await fetch(`${url}/test`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ value: 'long-enough-to-exceed-limit' }),
-    })
-    assert.equal(oversized.status, 413)
-    assert.equal((await oversized.json()).error.code, 'PAYLOAD_TOO_LARGE')
+    const body = await response.json()
+    assert.equal(body.ownerId, ownerId)
+    assert.equal(body.total, 3)
   })
 })

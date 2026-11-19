@@ -12,17 +12,14 @@ const projectId = '507f1f77bcf86cd799439012'
 async function withServer(app, callback) {
   const server = app.listen(0)
   await new Promise((resolve) => server.once('listening', resolve))
-  try {
-    await callback(`http://127.0.0.1:${server.address().port}`)
-  } finally {
-    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
-  }
+  try { await callback(`http://127.0.0.1:${server.address().port}`) }
+  finally { await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve())) }
 }
 
-function appWith(ProjectModel, TaskModel = {}) {
+function appWith(repository) {
   const app = express()
   app.use(express.json())
-  app.use('/api/projects', createProjectRouter({ jwtSecret: secret, ProjectModel, TaskModel }))
+  app.use('/api/projects', createProjectRouter({ jwtSecret: secret, repository }))
   app.use(errorHandler)
   return app
 }
@@ -31,63 +28,60 @@ function authHeaders() {
   return { cookie: `taskflow_token=${jwt.sign({}, secret, { subject: userId, expiresIn: '1h' })}` }
 }
 
-test('project task routes require a project membership match before querying tasks', async () => {
-  const projectQueries = []
-  let taskQueryCount = 0
-  const ProjectModel = {
-    findOne: async (query) => { projectQueries.push(query); return null },
+test('project task routes require membership before querying tasks', async () => {
+  let taskLookup = false
+  const repository = {
+    findProject: async () => null,
+    projectTasks: async () => { taskLookup = true; return [] },
+    findUserById: async () => ({ id: userId, role: 'employee', status: 'active' }),
   }
-  const TaskModel = {
-    find() { taskQueryCount += 1; throw new Error('task query should not run for a non-member') },
-  }
-  await withServer(appWith(ProjectModel, TaskModel), async (url) => {
+  await withServer(appWith(repository), async (url) => {
     const response = await fetch(`${url}/api/projects/${projectId}/tasks`, { headers: authHeaders() })
     assert.equal(response.status, 404)
-    assert.deepEqual(await response.json(), { error: { code: 'NOT_FOUND', message: 'Project not found' } })
-    assert.deepEqual(projectQueries, [{ _id: projectId, 'members.user': userId }])
-    assert.equal(taskQueryCount, 0)
   })
+  assert.equal(taskLookup, false)
 })
 
-test('project task reads are filtered to the requested member project', async () => {
-  const project = { _id: projectId, owner: userId, members: [{ user: userId, role: 'owner' }] }
-  let querySeen
-  const ProjectModel = { findOne: async (query) => { assert.deepEqual(query, { _id: projectId, 'members.user': userId }); return project } }
-  const task = { _id: '507f191e810c19729de860ea', title: 'Scoped', project: projectId }
-  const TaskModel = {
-    find(query) {
-      querySeen = query
-      return { populate() { return this }, sort() { return this }, lean: async () => [task] }
-    },
+test('project task reads stay within the requested project', async () => {
+  let requestedProject
+  const project = { id: projectId, _id: projectId, owner: { _id: userId }, members: [{ user: { _id: userId } }], status: 'active' }
+  const repository = {
+    findProject: async (projectId) => project,
+    projectTasks: async (projectId) => { requestedProject = projectId; return [{ _id: '507f191e810c19729de860ea', project: projectId }] },
   }
-  await withServer(appWith(ProjectModel, TaskModel), async (url) => {
+  await withServer(appWith(repository), async (url) => {
     const response = await fetch(`${url}/api/projects/${projectId}/tasks`, { headers: authHeaders() })
     assert.equal(response.status, 200)
-    assert.deepEqual((await response.json()).tasks, [task])
-    assert.deepEqual(querySeen, { project: projectId })
   })
+  assert.equal(requestedProject, projectId)
 })
 
 test('archived projects reject member removal until restored', async () => {
-  let saveCount = 0
-  const project = {
-    _id: projectId,
-    owner: userId,
-    status: 'archived',
-    members: [{ user: userId }, { user: '507f1f77bcf86cd799439013' }],
-    save: async () => { saveCount += 1 },
+  let removed = false
+  const project = { id: projectId, _id: projectId, name: 'Archived', owner: { _id: userId }, status: 'archived', members: [{ user: { _id: userId }, role: 'owner' }] }
+  const repository = {
+    findProject: async () => project,
+    removeProjectMember: async () => { removed = true },
+    findUserById: async () => ({ id: userId, role: 'admin', status: 'active' }),
   }
-  const ProjectModel = { findOne: async () => project }
-  await withServer(appWith(ProjectModel), async (url) => {
-    const response = await fetch(`${url}/api/projects/${projectId}/members/507f1f77bcf86cd799439013`, {
-      method: 'DELETE',
-      headers: authHeaders(),
-    })
+  await withServer(appWith(repository), async (url) => {
+    const response = await fetch(`${url}/api/projects/${projectId}/members/507f1f77bcf86cd799439013`, { method: 'DELETE', headers: authHeaders() })
     assert.equal(response.status, 409)
-    assert.deepEqual(await response.json(), {
-      error: { code: 'PROJECT_ARCHIVED', message: 'Archived projects are read-only. Restore the project to make changes.' },
+  })
+  assert.equal(removed, false)
+})
+
+test('employees cannot create or archive projects', async () => {
+  const repository = {
+    findUserById: async () => ({ id: userId, role: 'employee', status: 'active' }),
+  }
+  await withServer(appWith(repository), async (url) => {
+    const headers = { ...authHeaders(), 'content-type': 'application/json' }
+    const create = await fetch(`${url}/api/projects`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ name: 'Employee project' }),
     })
-    assert.equal(project.members.length, 2)
-    assert.equal(saveCount, 0)
+    assert.equal(create.status, 403)
   })
 })

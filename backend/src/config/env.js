@@ -9,8 +9,8 @@ function loadConfig(env = process.env) {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error('PORT must be an integer between 1 and 65535')
   }
-  if (!env.MONGODB_URI || !/^mongodb(?:\+srv)?:\/\//.test(env.MONGODB_URI)) {
-    throw new Error('MONGODB_URI must be a MongoDB connection URI')
+  if (!env.DATABASE_URL || !/^postgres(?:ql)?:\/\//.test(env.DATABASE_URL)) {
+    throw new Error('DATABASE_URL must be a PostgreSQL connection URI')
   }
   if (!jwtSecret || Buffer.byteLength(jwtSecret) < 32) {
     throw new Error('JWT_SECRET must contain at least 32 bytes')
@@ -18,21 +18,26 @@ function loadConfig(env = process.env) {
   if (!/^\d+(?:ms|s|m|h|d|w|y)?$/.test(jwtExpiresIn)) {
     throw new Error('JWT_EXPIRES_IN must be a numeric duration such as 15m, 12h, or 1d')
   }
+  const frontendOrigins = frontendOrigin.split(',').map((origin) => origin.trim()).filter(Boolean)
+  if (!frontendOrigins.length) throw new Error('FRONTEND_ORIGIN must contain at least one valid HTTP or HTTPS origin')
   try {
-    const url = new URL(frontendOrigin)
-    if (!['http:', 'https:'].includes(url.protocol) || url.origin !== frontendOrigin) throw new Error()
+    for (const origin of frontendOrigins) {
+      const url = new URL(origin)
+      if (!['http:', 'https:'].includes(url.protocol) || url.origin !== origin) throw new Error()
+    }
   } catch {
-    throw new Error('FRONTEND_ORIGIN must be a valid HTTP or HTTPS origin')
+    throw new Error('FRONTEND_ORIGIN must contain valid HTTP or HTTPS origins')
   }
 
   return Object.freeze({
     nodeEnv: env.NODE_ENV || 'development',
     port,
-    mongodbUri: env.MONGODB_URI,
-    mongodbTestUri: env.MONGODB_TEST_URI,
+    databaseUrl: env.DATABASE_URL,
+    databaseTestUrl: env.DATABASE_TEST_URL,
     jwtSecret,
     jwtExpiresIn,
     frontendOrigin,
+    frontendOrigins,
     isProduction: env.NODE_ENV === 'production',
   })
 }

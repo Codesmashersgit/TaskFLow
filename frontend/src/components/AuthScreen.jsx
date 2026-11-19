@@ -52,7 +52,7 @@ export default function AuthScreen({ onAuthenticated }) {
           <div className="auth-mobile-brand"><span className="brand-mark"><Layers3 size={18} /></span> taskflow<span className="brand-period">.</span></div>
           <span className="eyebrow eyebrow-light">{registering ? 'GET STARTED' : 'WELCOME BACK'}</span>
           <h2>{registering ? 'Create your workspace.' : 'Pick up where you left off.'}</h2>
-          <p>{registering ? 'Start organizing your team’s best work.' : 'Sign in to see what your team is moving forward.'}</p>
+          <p>{registering ? 'Start organizing your team’s work. The first account in a workspace becomes Admin.' : 'Sign in to see what your team is moving forward.'}</p>
           {error && <div className="form-error" role="alert">{error}</div>}
           {registering && (
             <label className="form-field"><span>Your name</span><span className="input-wrap"><input required maxLength="80" autoComplete="name" placeholder="Jamie Parker" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></span></label>

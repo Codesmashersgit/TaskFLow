@@ -8,13 +8,23 @@ const { errorHandler } = require('./middleware/error-handler')
 
 function createApp({
   frontendOrigin = 'http://localhost:5173',
+  frontendOrigins,
   jwtSecret = process.env.JWT_SECRET,
   jwtExpiresIn = process.env.JWT_EXPIRES_IN || '1d',
   isProduction = process.env.NODE_ENV === 'production',
 } = {}) {
   const app = express()
+  const allowedOrigins = new Set(
+    (frontendOrigins || frontendOrigin.split(',')).map((origin) => origin.trim()).filter(Boolean),
+  )
   app.disable('x-powered-by')
-  app.use(cors({ origin: frontendOrigin, credentials: true }))
+  app.use(cors({
+    credentials: true,
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) return callback(null, true)
+      return callback(new Error('Origin is not allowed by CORS'))
+    },
+  }))
   app.use(express.json({ limit: '10kb' }))
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff')
