@@ -66,6 +66,26 @@ TaskFlow is a production-minded team task management application built with Reac
 
 5. Open <http://localhost:5173>. The API health endpoint is <http://localhost:5001/api/health>.
 
+## Vercel deployment
+
+This repository deploys as two Vercel Services in one project. In Vercel project settings, select **Services** as the project framework. The Services feature may require access to its beta.
+
+- `backend` builds from `backend/` with the Express framework.
+- `frontend` builds from `frontend/` with the Vite framework.
+- `/api/(.*)` is routed publicly to `backend`; all other paths are routed to `frontend`.
+- The frontend uses the same-origin `/api` path, so there is no service-to-service binding. The browser reaches the backend through the public rewrite.
+
+Set these runtime environment variables for the backend service in Vercel:
+
+- `DATABASE_URL`: a reachable PostgreSQL connection string.
+- `JWT_SECRET`: a unique secret with at least 32 bytes.
+- `JWT_EXPIRES_IN`: optional; defaults to `1d`.
+- `NODE_ENV`: set to `production` for production deployments.
+- `FRONTEND_ORIGIN`: optional comma-separated list of allowed HTTPS origins. If omitted, the backend allows the current Vercel deployment URL and the project production URL. Add any custom domains here.
+
+The backend initializes the PostgreSQL schema on its first API request in each runtime instance. The database must allow connections from Vercel and provide the privileges needed by `backend/src/db/schema.sql`.
+
+See [Vercel Services](https://vercel.com/docs/services), [Services routing](https://vercel.com/docs/services/routing), and [Express on Vercel](https://vercel.com/docs/frameworks/backend/express) for platform setup details.
 ## Environment variables
 
 | Variable | Application | Purpose |

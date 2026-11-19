@@ -12,8 +12,10 @@ function createApp({
   jwtSecret = process.env.JWT_SECRET,
   jwtExpiresIn = process.env.JWT_EXPIRES_IN || '1d',
   isProduction = process.env.NODE_ENV === 'production',
+  initializeRequest,
+  expressApp,
 } = {}) {
-  const app = express()
+  const app = expressApp || express()
   const allowedOrigins = new Set(
     (frontendOrigins || frontendOrigin.split(',')).map((origin) => origin.trim()).filter(Boolean),
   )
@@ -26,6 +28,11 @@ function createApp({
     },
   }))
   app.use(express.json({ limit: '10kb' }))
+  if (initializeRequest) {
+    app.use('/api', async (_req, _res, next) => {
+      try { await initializeRequest(); next() } catch (error) { next(error) }
+    })
+  }
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader('Referrer-Policy', 'no-referrer')
