@@ -8,18 +8,20 @@ import MockHelpdeskPortal from './components/MockHelpdeskPortal.jsx'
 function Router() {
   const pathname = window.location.pathname
   const searchParams = new URLSearchParams(window.location.search)
+  const source = searchParams.get('source')
+  const id = searchParams.get('id')
 
-  // Direct standalone view for Mock CRM Portal
-  if (pathname.includes('/mock-apps/crm/') || searchParams.get('source') === 'crm') {
+  // Direct standalone view for Mock CRM Portal (No 404 possible)
+  if (source === 'crm' || pathname.includes('/mock-apps/crm/') || pathname.includes('/crm/')) {
     const idFromPath = pathname.split('/').filter(Boolean).pop()
-    const taskId = searchParams.get('id') || idFromPath || 'CRM-101'
+    const taskId = id || (idFromPath?.startsWith('CRM-') ? idFromPath : 'CRM-101')
     return <MockCrmPortal taskId={taskId} />
   }
 
-  // Direct standalone view for Mock Helpdesk Portal
-  if (pathname.includes('/mock-apps/helpdesk/') || searchParams.get('source') === 'helpdesk') {
+  // Direct standalone view for Mock Helpdesk Portal (No 404 possible)
+  if (source === 'helpdesk' || pathname.includes('/mock-apps/helpdesk/') || pathname.includes('/helpdesk/')) {
     const idFromPath = pathname.split('/').filter(Boolean).pop()
-    const ticketId = searchParams.get('id') || idFromPath || 'HD-201'
+    const ticketId = id || (idFromPath?.startsWith('HD-') ? idFromPath : 'HD-201')
     return <MockHelpdeskPortal ticketId={ticketId} />
   }
 

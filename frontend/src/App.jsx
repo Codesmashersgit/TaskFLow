@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Activity,
-  AlertCircle,
   AlertTriangle,
   ArrowDownWideNarrow,
-  ArrowRight,
   Building2,
   Calendar,
   CheckCircle2,
@@ -12,15 +10,11 @@ import {
   Clock,
   ExternalLink,
   Flame,
-  HelpCircle,
-  Layers,
   LayoutDashboard,
   LifeBuoy,
   List,
-  RefreshCw,
   RotateCcw,
   Search,
-  SlidersHorizontal,
   Sparkles,
   Users,
   X,
@@ -28,7 +22,6 @@ import {
 } from 'lucide-react'
 import { getDashboardTasks, patchTaskStatus, resetMockTasks } from './lib/api'
 import UnifiedTaskDetails from './components/UnifiedTaskDetails'
-import DataFlowModal from './components/DataFlowModal'
 import './App.css'
 
 const STATUS_COLUMNS = ['Pending', 'In Progress', 'Completed']
@@ -201,7 +194,6 @@ export default function App() {
   const [tasks, setTasks] = useState([])
   const [stats, setStats] = useState(null)
   const [employees, setEmployees] = useState([])
-  const [apiHealth, setApiHealth] = useState({ crm: { ok: true }, helpdesk: { ok: true } })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeEmployee, setActiveEmployee] = useState('All')
@@ -210,10 +202,8 @@ export default function App() {
   const [urgencyFilter, setUrgencyFilter] = useState('All')
   const [sortBy, setSortBy] = useState('priority')
   const [search, setSearch] = useState('')
-  const [viewMode, setViewMode] = useState('kanban') // 'kanban' | 'table' | 'matrix'
+  const [viewMode, setViewMode] = useState('kanban') // 'kanban' | 'table'
   const [selectedTask, setSelectedTask] = useState(null)
-  const [showDataFlow, setShowDataFlow] = useState(false)
-  const [simulateError, setSimulateError] = useState('none')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [actionNotice, setActionNotice] = useState('')
 
@@ -229,7 +219,6 @@ export default function App() {
         urgency: urgencyFilter,
         sortBy,
         search,
-        simulateError,
       })
 
       setTasks(data.tasks || [])
@@ -237,18 +226,12 @@ export default function App() {
       if (data.employees?.length) {
         setEmployees(data.employees)
       }
-      if (data.apiHealth) {
-        setApiHealth(data.apiHealth)
-      }
     } catch (err) {
       setError(err.message || 'Failed to fetch tasks from mock APIs')
-      if (err.details?.apiHealth) {
-        setApiHealth(err.details.apiHealth)
-      }
     } finally {
       setLoading(false)
     }
-  }, [activeEmployee, statusFilter, sourceFilter, urgencyFilter, sortBy, search, simulateError])
+  }, [activeEmployee, statusFilter, sourceFilter, urgencyFilter, sortBy, search])
 
   useEffect(() => {
     loadTasks()
@@ -273,7 +256,6 @@ export default function App() {
   async function handleResetData() {
     try {
       await resetMockTasks()
-      setSimulateError('none')
       setActionNotice('Mock data reset to initial default state.')
       setTimeout(() => setActionNotice(''), 3000)
       setRefreshTrigger((prev) => prev + 1)
@@ -284,106 +266,47 @@ export default function App() {
 
   return (
     <div className="unified-app-container">
-      {/* Top Banner: Navigation, Live REST APIs & Data Flow Inspector */}
-      <header className="unified-topbar">
+      {/* Clean, Modern Topbar (No Clutter) */}
+      <header className="clean-topbar">
         <div className="topbar-branding">
           <div className="app-logo">
-            <Sparkles size={20} />
+            <Sparkles size={18} />
           </div>
           <div>
-            <div className="brand-title-badge-row">
-              <h1 className="app-brand-name">TaskFlow</h1>
-              <span className="live-pipeline-badge">
-                <span className="live-beacon" /> 2 REST APIs Live
-              </span>
-            </div>
-            <p className="app-tagline">
-              Unified Multi-Source Task Dashboard (CRM & Helpdesk REST Aggregator)
-            </p>
+            <h1 className="clean-brand-name">TaskFlow</h1>
+            <span className="clean-brand-subtitle">Employee Task Dashboard</span>
           </div>
         </div>
 
-        {/* Live Mock API Health & Tools */}
-        <div className="topbar-actions-cluster">
-          {/* How Data Works Button */}
-          <button
-            className="dataflow-btn"
-            onClick={() => setShowDataFlow(true)}
-            title="Click to see where data comes from and how APIs are aggregated"
-          >
-            <Layers size={14} />
-            <span>⚡ How Data Works & APIs</span>
-          </button>
-
-          {/* API Health Badges */}
-          <div className="api-health-bar">
-            <div
-              className={`health-pill ${apiHealth.crm?.ok ? 'health-ok' : 'health-down'}`}
-              title={apiHealth.crm?.error || 'Mock CRM API is operational'}
+        {/* Clean Right Actions */}
+        <div className="topbar-clean-right">
+          <div className="employee-switch-wrap">
+            <span className="switch-label">
+              <Users size={14} /> Employee:
+            </span>
+            <select
+              className="clean-employee-select"
+              value={activeEmployee}
+              onChange={(e) => setActiveEmployee(e.target.value)}
             >
-              <span className="health-dot" />
-              <Building2 size={13} />
-              CRM: {apiHealth.crm?.ok ? '200 OK' : '503 Fail'}
-            </div>
+              <option value="All">All Employees ({employees.length || 4})</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-            <div
-              className={`health-pill ${apiHealth.helpdesk?.ok ? 'health-ok' : 'health-down'}`}
-              title={apiHealth.helpdesk?.error || 'Mock Helpdesk API is operational'}
-            >
-              <span className="health-dot" />
-              <LifeBuoy size={13} />
-              Helpdesk: {apiHealth.helpdesk?.ok ? '200 OK' : '504 Timeout'}
+          <div className="clean-profile-badge">
+            <Avatar name={activeEmployee !== 'All' ? activeEmployee : 'Alex Rivera'} size="small" />
+            <div className="profile-text">
+              <strong>{activeEmployee !== 'All' ? activeEmployee : 'Team Workspace'}</strong>
+              <small>Active View</small>
             </div>
-
-            {/* Error Simulator */}
-            <div className="error-sim-control">
-              <SlidersHorizontal size={13} />
-              <select
-                id="sim-select"
-                value={simulateError}
-                onChange={(e) => setSimulateError(e.target.value)}
-                title="Test Requirement 5: Simulate upstream API errors to verify resilient error handling"
-              >
-                <option value="none">Test Errors: Normal</option>
-                <option value="crm">Simulate CRM Error (503)</option>
-                <option value="helpdesk">Simulate Helpdesk Timeout (504)</option>
-                <option value="both">Simulate Both Down (502)</option>
-              </select>
-            </div>
-
-            <button
-              className="button button-quiet button-sm"
-              onClick={handleResetData}
-              title="Reset mock task records"
-            >
-              <RotateCcw size={13} />
-              Reset Data
-            </button>
           </div>
         </div>
       </header>
-
-      {/* Partial Outage Notice Banner (Requirement 5) */}
-      {(!apiHealth.crm?.ok || !apiHealth.helpdesk?.ok) && (
-        <div className="partial-error-banner" role="alert">
-          <AlertCircle size={18} />
-          <div className="banner-text">
-            <strong>Upstream Service Warning:</strong>{' '}
-            {!apiHealth.crm?.ok && `Mock CRM REST API returned 503 (${apiHealth.crm?.error}). `}
-            {!apiHealth.helpdesk?.ok && `Mock Helpdesk REST API returned 504 (${apiHealth.helpdesk?.error}). `}
-            Displaying tasks from surviving operational services with graceful degradation.
-          </div>
-          <button
-            className="banner-retry-btn"
-            onClick={() => {
-              setSimulateError('none')
-              setRefreshTrigger((p) => p + 1)
-            }}
-          >
-            <RefreshCw size={13} /> Restore All Services
-          </button>
-        </div>
-      )}
 
       {/* Action Notice Toast */}
       {actionNotice && (
@@ -393,34 +316,34 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Container */}
+      {/* Main Dashboard Content */}
       <main className="dashboard-content">
-        {/* KPI / Stats Summary Cards with Premium SaaS Glow */}
+        {/* KPI / Stats Summary Cards */}
         <section className="stats-cards-grid">
           <div className="stat-card-box stat-accent-indigo">
             <div className="stat-card-header">
-              <span>Total Aggregated Tasks</span>
-              <Activity size={18} />
+              <span>Total Assigned Tasks</span>
+              <Activity size={17} />
             </div>
             <strong className="stat-card-number">{stats?.total || 0}</strong>
             <p className="stat-card-desc">
-              From 2 Mock REST APIs ({stats?.crmCount || 0} CRM · {stats?.helpdeskCount || 0} Helpdesk)
+              Aggregated from CRM ({stats?.crmCount || 0}) & Helpdesk ({stats?.helpdeskCount || 0})
             </p>
           </div>
 
           <div className="stat-card-box stat-accent-red">
             <div className="stat-card-header">
               <span>P1 Critical & Urgent</span>
-              <Flame size={18} />
+              <Flame size={17} />
             </div>
             <strong className="stat-card-number">{stats?.urgentCount || 0}</strong>
-            <p className="stat-card-desc">Ranked top by deadline + urgency formula</p>
+            <p className="stat-card-desc">High urgency + imminent deadline</p>
           </div>
 
           <div className="stat-card-box stat-accent-amber">
             <div className="stat-card-header">
               <span>Due Today & Overdue</span>
-              <Clock size={18} />
+              <Clock size={17} />
             </div>
             <strong className="stat-card-number">
               {(stats?.overdueCount || 0) + (stats?.dueTodayCount || 0)}
@@ -433,7 +356,7 @@ export default function App() {
           <div className="stat-card-box stat-accent-emerald">
             <div className="stat-card-header">
               <span>Completed / Resolved</span>
-              <CheckCircle2 size={18} />
+              <CheckCircle2 size={17} />
             </div>
             <strong className="stat-card-number">{stats?.completedCount || 0}</strong>
             <p className="stat-card-desc">
@@ -442,19 +365,19 @@ export default function App() {
           </div>
         </section>
 
-        {/* Source Segmented Quick Filter Tabs */}
+        {/* Source Segmented Filter Tabs */}
         <div className="source-segmented-tabs">
           <button
             className={`source-tab-btn ${sourceFilter === 'All' ? 'source-tab-active' : ''}`}
             onClick={() => setSourceFilter('All')}
           >
-            All Unified Tasks <span className="tab-pill">{stats?.total || 0}</span>
+            All Tasks <span className="tab-pill">{stats?.total || 0}</span>
           </button>
           <button
             className={`source-tab-btn ${sourceFilter === 'CRM' ? 'source-tab-active source-tab-crm' : ''}`}
             onClick={() => setSourceFilter('CRM')}
           >
-            <Building2 size={14} /> CRM Sales Deals <span className="tab-pill pill-crm">{stats?.crmCount || 0}</span>
+            <Building2 size={14} /> CRM Deals <span className="tab-pill pill-crm">{stats?.crmCount || 0}</span>
           </button>
           <button
             className={`source-tab-btn ${sourceFilter === 'Helpdesk' ? 'source-tab-active source-tab-hd' : ''}`}
@@ -464,33 +387,12 @@ export default function App() {
           </button>
         </div>
 
-        {/* Filter Toolbar (Requirement 3: Filters for Employee and Task Status) */}
+        {/* Filter Toolbar (Clean & Intuitive) */}
         <section className="filter-toolbar-card">
           <div className="filter-group">
-            {/* Employee Filter */}
-            <label className="filter-item">
-              <span className="filter-label">
-                <Users size={14} /> Employee Filter
-              </span>
-              <select
-                className="filter-select"
-                value={activeEmployee}
-                onChange={(e) => setActiveEmployee(e.target.value)}
-              >
-                <option value="All">All Employees ({employees.length})</option>
-                {employees.map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.name} ({emp.taskCount} tasks)
-                  </option>
-                ))}
-              </select>
-            </label>
-
             {/* Task Status Filter */}
             <label className="filter-item">
-              <span className="filter-label">
-                <Activity size={14} /> Task Status
-              </span>
+              <span className="filter-label">Status</span>
               <select
                 className="filter-select"
                 value={statusFilter}
@@ -505,9 +407,7 @@ export default function App() {
 
             {/* Urgency Filter */}
             <label className="filter-item">
-              <span className="filter-label">
-                <Flame size={14} /> Urgency Level
-              </span>
+              <span className="filter-label">Urgency</span>
               <select
                 className="filter-select"
                 value={urgencyFilter}
@@ -521,11 +421,9 @@ export default function App() {
               </select>
             </label>
 
-            {/* Sort Control (Requirement 2: Prioritization based on deadlines and urgency) */}
+            {/* Prioritization & Sort */}
             <label className="filter-item">
-              <span className="filter-label">
-                <ArrowDownWideNarrow size={14} /> Prioritization & Sort
-              </span>
+              <span className="filter-label">Sort Priority</span>
               <select
                 className="filter-select"
                 value={sortBy}
@@ -539,7 +437,7 @@ export default function App() {
             </label>
           </div>
 
-          {/* Search Box & View Mode Switcher */}
+          {/* Search Box & View Mode Buttons */}
           <div className="filter-actions-row">
             <div className="search-box-wrap">
               <Search size={15} />
@@ -571,13 +469,6 @@ export default function App() {
               >
                 <List size={15} /> List
               </button>
-              <button
-                className={`view-mode-btn ${viewMode === 'matrix' ? 'view-mode-active' : ''}`}
-                onClick={() => setViewMode('matrix')}
-                title="Priority Matrix View"
-              >
-                <Zap size={15} /> Priority Matrix
-              </button>
             </div>
           </div>
         </section>
@@ -586,31 +477,25 @@ export default function App() {
         {loading ? (
           <div className="loading-state-box">
             <span className="spinner spinner-dark" />
-            <p>Fetching aggregated tasks from CRM and Helpdesk mock REST APIs…</p>
+            <p>Fetching tasks from mock REST APIs…</p>
           </div>
         ) : error && tasks.length === 0 ? (
           <div className="error-state-box" role="alert">
-            <AlertTriangle size={36} />
+            <AlertTriangle size={32} />
             <h3>Unable to Load Dashboard Tasks</h3>
             <p>{error}</p>
-            <p className="error-state-hint">
-              This occurred because the simulated error was triggered or upstream mock APIs failed.
-            </p>
             <button
               className="button button-primary"
-              onClick={() => {
-                setSimulateError('none')
-                setRefreshTrigger((p) => p + 1)
-              }}
+              onClick={() => setRefreshTrigger((p) => p + 1)}
             >
-              <RefreshCw size={14} /> Retry / Restore Mock APIs
+              Retry
             </button>
           </div>
         ) : tasks.length === 0 ? (
           <div className="empty-state-box">
             <Users size={32} />
             <h3>No tasks match your active filters</h3>
-            <p>Try resetting your employee, status, or search filters to see all aggregated tasks.</p>
+            <p>Try resetting status or search filters to see all aggregated tasks.</p>
             <button
               className="button button-quiet"
               onClick={() => {
@@ -656,7 +541,7 @@ export default function App() {
               )
             })}
           </div>
-        ) : viewMode === 'table' ? (
+        ) : (
           /* Table List View */
           <div className="table-wrapper-card">
             <table className="unified-task-table">
@@ -720,7 +605,6 @@ export default function App() {
                       </select>
                     </td>
                     <td onClick={(e) => e.stopPropagation()}>
-                      {/* Clickable task link opening source application (Requirement 4) */}
                       <a
                         href={task.sourceUrl}
                         target="_blank"
@@ -736,50 +620,24 @@ export default function App() {
               </tbody>
             </table>
           </div>
-        ) : (
-          /* Priority Matrix View (Grouped by P1, P2, P3, P4) */
-          <div className="priority-matrix-container">
-            {['P1 - Critical', 'P2 - High', 'P3 - Medium', 'P4 - Low'].map((pLevel) => {
-              const matrixTasks = tasks.filter((t) => t.priority?.level === pLevel)
-              const toneClass = pLevel.startsWith('P1')
-                ? 'matrix-critical'
-                : pLevel.startsWith('P2')
-                ? 'matrix-high'
-                : pLevel.startsWith('P3')
-                ? 'matrix-medium'
-                : 'matrix-low'
-
-              return (
-                <div key={pLevel} className={`priority-matrix-group ${toneClass}`}>
-                  <div className="matrix-group-header">
-                    <div className="matrix-title-wrap">
-                      {pLevel.startsWith('P1') ? <Flame size={16} /> : <Zap size={16} />}
-                      <h3>{pLevel}</h3>
-                    </div>
-                    <span className="matrix-count">{matrixTasks.length} tasks</span>
-                  </div>
-
-                  <div className="matrix-cards-grid">
-                    {matrixTasks.map((task) => (
-                      <KanbanTaskCard
-                        key={task.id}
-                        task={task}
-                        onOpen={setSelectedTask}
-                        onStatusChange={handleStatusChange}
-                      />
-                    ))}
-                    {matrixTasks.length === 0 && (
-                      <p className="matrix-empty">No tasks in {pLevel}</p>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
         )}
       </main>
 
-      {/* Task Details Modal (Requirement 4: Clickable task links opening source application) */}
+      {/* Clean Footer */}
+      <footer className="dashboard-footer">
+        <div className="footer-left">
+          <span>TaskFlow Employee Task Dashboard</span>
+          <span>·</span>
+          <span>Aggregated from Mock CRM & Helpdesk REST APIs</span>
+        </div>
+        <div className="footer-right">
+          <button className="footer-link-btn" onClick={handleResetData}>
+            <RotateCcw size={12} /> Reset Sample Tasks
+          </button>
+        </div>
+      </footer>
+
+      {/* Task Details Modal with Live Source App Preview */}
       {selectedTask && (
         <UnifiedTaskDetails
           task={selectedTask}
@@ -787,9 +645,6 @@ export default function App() {
           onStatusChange={handleStatusChange}
         />
       )}
-
-      {/* Data Pipeline Explainer Modal */}
-      {showDataFlow && <DataFlowModal onClose={() => setShowDataFlow(false)} />}
     </div>
   )
 }

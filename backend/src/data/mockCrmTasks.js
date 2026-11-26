@@ -16,7 +16,7 @@ const initialCrmTasks = [
     title: 'Enterprise Q4 Contract Renewal - Apex Global',
     description: 'Finalize SLA addendum and pricing terms for 450 enterprise seats before quarter end.',
     source: 'CRM',
-    sourceUrl: '/mock-apps/crm/CRM-101',
+    sourceUrl: '/?source=crm&id=CRM-101',
     customer: 'Apex Global Logistics',
     dealValue: '$120,000',
     employee: {
@@ -36,7 +36,7 @@ const initialCrmTasks = [
     title: 'Onboarding Kickoff Meeting - Nimbus Cloud',
     description: 'Conduct architecture handoff and technical onboarding sync with CTO & engineering leads.',
     source: 'CRM',
-    sourceUrl: '/mock-apps/crm/CRM-102',
+    sourceUrl: '/?source=crm&id=CRM-102',
     customer: 'Nimbus Cloud Systems',
     dealValue: '$48,000',
     employee: {
@@ -56,7 +56,7 @@ const initialCrmTasks = [
     title: 'Follow-up on Stalled Pilot - BlueWave Health',
     description: 'Reach out to decision maker regarding pilot feedback and security compliance signoff.',
     source: 'CRM',
-    sourceUrl: '/mock-apps/crm/CRM-103',
+    sourceUrl: '/?source=crm&id=CRM-103',
     customer: 'BlueWave Health Tech',
     dealValue: '$65,000',
     employee: {
@@ -76,7 +76,7 @@ const initialCrmTasks = [
     title: 'Annual Account Health Review - Quantum Dynamics',
     description: 'Evaluate feature adoption metrics, NPS feedback, and prepare expansion proposal.',
     source: 'CRM',
-    sourceUrl: '/mock-apps/crm/CRM-104',
+    sourceUrl: '/?source=crm&id=CRM-104',
     customer: 'Quantum Dynamics Inc',
     dealValue: '$90,000',
     employee: {
@@ -96,7 +96,7 @@ const initialCrmTasks = [
     title: 'Inbound Lead Qualification - Lumina Media',
     description: 'Review RFP submission from marketing director and schedule discovery call.',
     source: 'CRM',
-    sourceUrl: '/mock-apps/crm/CRM-105',
+    sourceUrl: '/?source=crm&id=CRM-105',
     customer: 'Lumina Media Group',
     dealValue: '$32,000',
     employee: {
@@ -116,7 +116,7 @@ const initialCrmTasks = [
     title: 'Security Questionnaire Review - FinSecure Corp',
     description: 'Collaborate with InfoSec team to complete SOC-2 vendor evaluation form.',
     source: 'CRM',
-    sourceUrl: '/mock-apps/crm/CRM-106',
+    sourceUrl: '/?source=crm&id=CRM-106',
     customer: 'FinSecure Corp',
     dealValue: '$150,000',
     employee: {

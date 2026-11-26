@@ -2569,3 +2569,134 @@
   color: #38bdf8;
   line-height: 1.5;
 }
+
+
+/* ==========================================================================
+   CLEAN MINIMALIST TOPBAR & FOOTER STYLES
+   ========================================================================== */
+
+.clean-topbar {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.clean-brand-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 850;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+}
+
+.clean-brand-subtitle {
+  font-size: 11px;
+  color: #64748b;
+  display: block;
+}
+
+.topbar-clean-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.employee-switch-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.switch-label {
+  font-size: 11px;
+  font-weight: 750;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.clean-employee-select {
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  outline: none;
+  cursor: pointer;
+}
+
+.clean-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 1px solid #e2e8f0;
+}
+
+.profile-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-text strong {
+  font-size: 12px;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.profile-text small {
+  font-size: 10px;
+  color: #64748b;
+}
+
+/* Clean Dashboard Footer */
+.dashboard-footer {
+  margin-top: auto;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+  padding: 16px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-link-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.footer-link-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}

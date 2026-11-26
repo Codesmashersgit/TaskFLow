@@ -10,7 +10,7 @@ test('CRM mock tasks return valid fields and clickable source links', () => {
   for (const t of tasks) {
     assert.ok(t.id.startsWith('CRM-'))
     assert.ok(t.source === 'CRM')
-    assert.ok(t.sourceUrl.includes('/crm/'))
+    assert.ok(t.sourceUrl.includes('crm'))
     assert.ok(t.employee?.id)
     assert.ok(t.employee?.name)
     assert.ok(['Urgent', 'High', 'Medium', 'Low'].includes(t.urgency))
@@ -24,7 +24,7 @@ test('Helpdesk mock tickets return valid fields and clickable source links', () 
   for (const t of tickets) {
     assert.ok(t.id.startsWith('HD-'))
     assert.ok(t.source === 'Helpdesk')
-    assert.ok(t.sourceUrl.includes('/helpdesk/'))
+    assert.ok(t.sourceUrl.includes('helpdesk'))
     assert.ok(t.employee?.id)
     assert.ok(t.employee?.name)
     assert.ok(['Urgent', 'High', 'Medium', 'Low'].includes(t.urgency))
