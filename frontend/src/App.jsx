@@ -4,6 +4,7 @@ import {
   AlertCircle,
   AlertTriangle,
   ArrowDownWideNarrow,
+  ArrowRight,
   Building2,
   Calendar,
   CheckCircle2,
@@ -11,6 +12,8 @@ import {
   Clock,
   ExternalLink,
   Flame,
+  HelpCircle,
+  Layers,
   LayoutDashboard,
   LifeBuoy,
   List,
@@ -25,6 +28,7 @@ import {
 } from 'lucide-react'
 import { getDashboardTasks, patchTaskStatus, resetMockTasks } from './lib/api'
 import UnifiedTaskDetails from './components/UnifiedTaskDetails'
+import DataFlowModal from './components/DataFlowModal'
 import './App.css'
 
 const STATUS_COLUMNS = ['Pending', 'In Progress', 'Completed']
@@ -94,14 +98,15 @@ function SourceBadge({ source, sourceUrl }) {
         title={`Open in ${source} source application (opens in new tab)`}
         onClick={(e) => e.stopPropagation()}
       >
-        <ExternalLink size={12} />
+        <span>Open</span>
+        <ExternalLink size={11} />
       </a>
     </div>
   )
 }
 
 function DeadlineTag({ priority, deadline }) {
-  if (!deadline) return <span className="deadline-muted">No date</span>
+  if (!deadline) return <span className="deadline-muted">No deadline</span>
 
   if (priority?.isOverdue) {
     return (
@@ -134,27 +139,36 @@ function KanbanTaskCard({ task, onOpen, onStatusChange }) {
   const isCrm = task.source === 'CRM'
 
   return (
-    <article className="dashboard-task-card" onClick={() => onOpen(task)}>
-      {/* Top Bar: Source Badge & Priority */}
+    <article
+      className={`dashboard-task-card ${isCrm ? 'card-border-crm' : 'card-border-helpdesk'}`}
+      onClick={() => onOpen(task)}
+    >
+      {/* Top Bar: Source Badge with Clickable Link + Priority Score */}
       <div className="card-top-bar">
         <SourceBadge source={task.source} sourceUrl={task.sourceUrl} />
         <PriorityPill priority={task.priority} />
       </div>
 
-      {/* Task ID & Title */}
+      {/* Task ID & Urgency Indicator */}
       <div className="card-id-row">
         <span className="card-task-id">{task.id}</span>
-        <span className={`card-urgency-dot urgency-dot-${task.urgency?.toLowerCase()}`} title={`Urgency: ${task.urgency}`} />
+        <span className={`card-urgency-tag urgency-${task.urgency?.toLowerCase()}`}>
+          Urgency: {task.urgency}
+        </span>
       </div>
+
+      {/* Title & Description */}
       <h4 className="card-title">{task.title}</h4>
       <p className="card-description">{task.description}</p>
 
-      {/* Source Meta (Customer / Requester) */}
+      {/* Source Meta (Client/Deal or Requester/Category) */}
       <div className="card-meta-line">
         <span className="meta-entity">
           <b>{isCrm ? 'Client:' : 'Requester:'}</b> {task.customerOrRequester}
         </span>
-        <span className="meta-value">{task.dealOrCategory}</span>
+        <span className={`meta-badge ${isCrm ? 'meta-badge-crm' : 'meta-badge-hd'}`}>
+          {task.dealOrCategory}
+        </span>
       </div>
 
       {/* Card Footer: Deadline, Assignee, Status Select */}
@@ -162,7 +176,11 @@ function KanbanTaskCard({ task, onOpen, onStatusChange }) {
         <DeadlineTag priority={task.priority} deadline={task.deadline} />
 
         <div className="card-footer-right">
-          <Avatar name={task.employee?.name || 'Unassigned'} size="small" />
+          <div className="card-assignee-pill" title={`Assigned to ${task.employee?.name} (${task.employee?.role})`}>
+            <Avatar name={task.employee?.name || 'Unassigned'} size="small" />
+            <span className="assignee-name-truncate">{task.employee?.name?.split(' ')[0]}</span>
+          </div>
+
           <select
             className="card-status-select"
             value={task.status}
@@ -194,6 +212,7 @@ export default function App() {
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState('kanban') // 'kanban' | 'table' | 'matrix'
   const [selectedTask, setSelectedTask] = useState(null)
+  const [showDataFlow, setShowDataFlow] = useState(false)
   const [simulateError, setSimulateError] = useState('none')
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [actionNotice, setActionNotice] = useState('')
@@ -265,61 +284,82 @@ export default function App() {
 
   return (
     <div className="unified-app-container">
-      {/* Top Banner: Service Health & Interactive Reviewer Tester */}
+      {/* Top Banner: Navigation, Live REST APIs & Data Flow Inspector */}
       <header className="unified-topbar">
         <div className="topbar-branding">
           <div className="app-logo">
             <Sparkles size={20} />
           </div>
           <div>
-            <h1 className="app-brand-name">
-              TaskFlow <span>· Employee Task Dashboard</span>
-            </h1>
+            <div className="brand-title-badge-row">
+              <h1 className="app-brand-name">TaskFlow</h1>
+              <span className="live-pipeline-badge">
+                <span className="live-beacon" /> 2 REST APIs Live
+              </span>
+            </div>
             <p className="app-tagline">
-              Unified multi-source task aggregator (CRM & Helpdesk mock REST APIs)
+              Unified Multi-Source Task Dashboard (CRM & Helpdesk REST Aggregator)
             </p>
           </div>
         </div>
 
-        {/* Live Mock API Health Status Badges (Requirement 1 & 5) */}
-        <div className="api-health-bar">
-          <div className={`health-pill ${apiHealth.crm?.ok ? 'health-ok' : 'health-down'}`} title={apiHealth.crm?.error || 'CRM Mock REST API is healthy'}>
-            <span className="health-dot" />
-            <Building2 size={13} />
-            CRM API: {apiHealth.crm?.ok ? 'Online' : 'Unavailable (503)'}
-          </div>
-
-          <div className={`health-pill ${apiHealth.helpdesk?.ok ? 'health-ok' : 'health-down'}`} title={apiHealth.helpdesk?.error || 'Helpdesk Mock REST API is healthy'}>
-            <span className="health-dot" />
-            <LifeBuoy size={13} />
-            Helpdesk API: {apiHealth.helpdesk?.ok ? 'Online' : 'Timeout (504)'}
-          </div>
-
-          {/* Interactive Error Handling Simulation Tester for Reviewers */}
-          <div className="error-sim-control">
-            <SlidersHorizontal size={13} />
-            <label htmlFor="sim-select" className="sr-only">Test API Error Handling</label>
-            <select
-              id="sim-select"
-              value={simulateError}
-              onChange={(e) => setSimulateError(e.target.value)}
-              title="Test Requirement 5: Simulate API outages and verify resilient error handling"
-            >
-              <option value="none">Test API Error: Normal</option>
-              <option value="crm">Simulate CRM Failure (503)</option>
-              <option value="helpdesk">Simulate Helpdesk Timeout (504)</option>
-              <option value="both">Simulate Both Down (502)</option>
-            </select>
-          </div>
-
+        {/* Live Mock API Health & Tools */}
+        <div className="topbar-actions-cluster">
+          {/* How Data Works Button */}
           <button
-            className="button button-quiet button-sm"
-            onClick={handleResetData}
-            title="Reset mock task records"
+            className="dataflow-btn"
+            onClick={() => setShowDataFlow(true)}
+            title="Click to see where data comes from and how APIs are aggregated"
           >
-            <RotateCcw size={13} />
-            Reset Data
+            <Layers size={14} />
+            <span>⚡ How Data Works & APIs</span>
           </button>
+
+          {/* API Health Badges */}
+          <div className="api-health-bar">
+            <div
+              className={`health-pill ${apiHealth.crm?.ok ? 'health-ok' : 'health-down'}`}
+              title={apiHealth.crm?.error || 'Mock CRM API is operational'}
+            >
+              <span className="health-dot" />
+              <Building2 size={13} />
+              CRM: {apiHealth.crm?.ok ? '200 OK' : '503 Fail'}
+            </div>
+
+            <div
+              className={`health-pill ${apiHealth.helpdesk?.ok ? 'health-ok' : 'health-down'}`}
+              title={apiHealth.helpdesk?.error || 'Mock Helpdesk API is operational'}
+            >
+              <span className="health-dot" />
+              <LifeBuoy size={13} />
+              Helpdesk: {apiHealth.helpdesk?.ok ? '200 OK' : '504 Timeout'}
+            </div>
+
+            {/* Error Simulator */}
+            <div className="error-sim-control">
+              <SlidersHorizontal size={13} />
+              <select
+                id="sim-select"
+                value={simulateError}
+                onChange={(e) => setSimulateError(e.target.value)}
+                title="Test Requirement 5: Simulate upstream API errors to verify resilient error handling"
+              >
+                <option value="none">Test Errors: Normal</option>
+                <option value="crm">Simulate CRM Error (503)</option>
+                <option value="helpdesk">Simulate Helpdesk Timeout (504)</option>
+                <option value="both">Simulate Both Down (502)</option>
+              </select>
+            </div>
+
+            <button
+              className="button button-quiet button-sm"
+              onClick={handleResetData}
+              title="Reset mock task records"
+            >
+              <RotateCcw size={13} />
+              Reset Data
+            </button>
+          </div>
         </div>
       </header>
 
@@ -333,7 +373,13 @@ export default function App() {
             {!apiHealth.helpdesk?.ok && `Mock Helpdesk REST API returned 504 (${apiHealth.helpdesk?.error}). `}
             Displaying tasks from surviving operational services with graceful degradation.
           </div>
-          <button className="banner-retry-btn" onClick={() => { setSimulateError('none'); setRefreshTrigger((p) => p + 1) }}>
+          <button
+            className="banner-retry-btn"
+            onClick={() => {
+              setSimulateError('none')
+              setRefreshTrigger((p) => p + 1)
+            }}
+          >
             <RefreshCw size={13} /> Restore All Services
           </button>
         </div>
@@ -349,9 +395,9 @@ export default function App() {
 
       {/* Main Container */}
       <main className="dashboard-content">
-        {/* KPI / Stats Summary Cards */}
+        {/* KPI / Stats Summary Cards with Premium SaaS Glow */}
         <section className="stats-cards-grid">
-          <div className="stat-card-box stat-accent-blue">
+          <div className="stat-card-box stat-accent-indigo">
             <div className="stat-card-header">
               <span>Total Aggregated Tasks</span>
               <Activity size={18} />
@@ -364,16 +410,16 @@ export default function App() {
 
           <div className="stat-card-box stat-accent-red">
             <div className="stat-card-header">
-              <span>Urgent & High Priority</span>
+              <span>P1 Critical & Urgent</span>
               <Flame size={18} />
             </div>
             <strong className="stat-card-number">{stats?.urgentCount || 0}</strong>
-            <p className="stat-card-desc">Ranked top by deadline + urgency algorithm</p>
+            <p className="stat-card-desc">Ranked top by deadline + urgency formula</p>
           </div>
 
           <div className="stat-card-box stat-accent-amber">
             <div className="stat-card-header">
-              <span>Deadlines: Due Today / Overdue</span>
+              <span>Due Today & Overdue</span>
               <Clock size={18} />
             </div>
             <strong className="stat-card-number">
@@ -384,7 +430,7 @@ export default function App() {
             </p>
           </div>
 
-          <div className="stat-card-box stat-accent-green">
+          <div className="stat-card-box stat-accent-emerald">
             <div className="stat-card-header">
               <span>Completed / Resolved</span>
               <CheckCircle2 size={18} />
@@ -395,6 +441,28 @@ export default function App() {
             </p>
           </div>
         </section>
+
+        {/* Source Segmented Quick Filter Tabs */}
+        <div className="source-segmented-tabs">
+          <button
+            className={`source-tab-btn ${sourceFilter === 'All' ? 'source-tab-active' : ''}`}
+            onClick={() => setSourceFilter('All')}
+          >
+            All Unified Tasks <span className="tab-pill">{stats?.total || 0}</span>
+          </button>
+          <button
+            className={`source-tab-btn ${sourceFilter === 'CRM' ? 'source-tab-active source-tab-crm' : ''}`}
+            onClick={() => setSourceFilter('CRM')}
+          >
+            <Building2 size={14} /> CRM Sales Deals <span className="tab-pill pill-crm">{stats?.crmCount || 0}</span>
+          </button>
+          <button
+            className={`source-tab-btn ${sourceFilter === 'Helpdesk' ? 'source-tab-active source-tab-hd' : ''}`}
+            onClick={() => setSourceFilter('Helpdesk')}
+          >
+            <LifeBuoy size={14} /> Helpdesk Tickets <span className="tab-pill pill-hd">{stats?.helpdeskCount || 0}</span>
+          </button>
+        </div>
 
         {/* Filter Toolbar (Requirement 3: Filters for Employee and Task Status) */}
         <section className="filter-toolbar-card">
@@ -435,22 +503,6 @@ export default function App() {
               </select>
             </label>
 
-            {/* Source Application Filter */}
-            <label className="filter-item">
-              <span className="filter-label">
-                <Building2 size={14} /> Source API
-              </span>
-              <select
-                className="filter-select"
-                value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value)}
-              >
-                <option value="All">All Sources (CRM & Helpdesk)</option>
-                <option value="CRM">CRM REST API Only</option>
-                <option value="Helpdesk">Helpdesk REST API Only</option>
-              </select>
-            </label>
-
             {/* Urgency Filter */}
             <label className="filter-item">
               <span className="filter-label">
@@ -469,7 +521,7 @@ export default function App() {
               </select>
             </label>
 
-            {/* Sort Control (Requirement 2: Task Prioritization based on deadlines and urgency) */}
+            {/* Sort Control (Requirement 2: Prioritization based on deadlines and urgency) */}
             <label className="filter-item">
               <span className="filter-label">
                 <ArrowDownWideNarrow size={14} /> Prioritization & Sort
@@ -546,7 +598,10 @@ export default function App() {
             </p>
             <button
               className="button button-primary"
-              onClick={() => { setSimulateError('none'); setRefreshTrigger((p) => p + 1) }}
+              onClick={() => {
+                setSimulateError('none')
+                setRefreshTrigger((p) => p + 1)
+              }}
             >
               <RefreshCw size={14} /> Retry / Restore Mock APIs
             </button>
@@ -732,6 +787,9 @@ export default function App() {
           onStatusChange={handleStatusChange}
         />
       )}
+
+      {/* Data Pipeline Explainer Modal */}
+      {showDataFlow && <DataFlowModal onClose={() => setShowDataFlow(false)} />}
     </div>
   )
 }
