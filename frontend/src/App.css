@@ -2122,3 +2122,78 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Task Modal Tabs & Embedded Source View */
+.task-modal-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 24px 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.modal-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-tab-btn:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.modal-tab-active {
+  background: #eef2ff !important;
+  border-color: #c7d2fe !important;
+  color: #4338ca !important;
+}
+
+.embedded-source-view {
+  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.embedded-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #64748b;
+  background: #f8fafc;
+  padding: 8px 14px;
+  border-radius: 8px;
+}
+
+.button-link-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #4f46e5;
+  font-weight: 700;
+  text-decoration: none;
+  font-size: 11px;
+}
+
+.button-link-compact:hover {
+  text-decoration: underline;
+}
+
+.embedded-source-frame {
+  width: 100%;
+  height: 480px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #0b0f19;
+}

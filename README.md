@@ -1,6 +1,6 @@
 # TaskFlow — Employee Task Dashboard
 
-A modern, responsive unified web application developed for the **Practical Assignment – Employee Task Dashboard**. The application aggregates employee tasks from **two mock REST APIs (CRM and Helpdesk)**, intelligently prioritizes work based on **deadlines and urgency**, provides granular **employee and status filters**, features **clickable links to source applications**, and includes **resilient API error handling**.
+A modern, responsive unified web application developed for the **Practical Assignment – Employee Task Dashboard**. The application aggregates employee tasks from **two mock REST APIs (CRM and Helpdesk)**, intelligently prioritizes work based on **deadlines and urgency**, provides granular **employee and status filters**, features **clickable links opening working mock source applications**, and includes **resilient API error handling**.
 
 Built using **React (Vite)** on the frontend and **Node.js (Express)** on the backend.
 
@@ -13,7 +13,7 @@ Built using **React (Vite)** on the frontend and **Node.js (Express)** on the ba
 | **1** | **Multi-Source Task Aggregation** | Live tasks fetched from two distinct mock REST APIs: `CRM` (`/api/crm/tasks`) and `Helpdesk` (`/api/helpdesk/tickets`). Tasks display distinct source badges with source metadata (e.g., Client & Deal Value for CRM; Requester & Incident Category for Helpdesk). |
 | **2** | **Task Prioritization (Deadlines + Urgency)** | Intelligent dynamic scoring algorithm combining deadline proximity (overdue, due today, due soon) with urgency severity (Critical, High, Medium, Low). Visual priority levels (`P1 - Critical`, `P2 - High`, `P3 - Medium`, `P4 - Low`) with numerical score breakdown. |
 | **3** | **Employee & Status Filters** | Dropdown filters to view tasks by specific employee or entire team, filter by task status (`Pending / Open`, `In Progress`, `Completed / Resolved`), filter by source API (`CRM` / `Helpdesk`), urgency level, and instant text search. |
-| **4** | **Clickable Source Application Links** | Direct `Open in CRM ↗` and `Open in Helpdesk ↗` external link buttons opening simulated source application URLs (`target="_blank" rel="noopener noreferrer"`). Rich Task Detail Modal with full source records. |
+| **4** | **Clickable Source Application Links** | Direct `Open in CRM ↗` and `Open in Helpdesk ↗` external link buttons opening real working mock source application portals (`/mock-apps/crm/:id` and `/mock-apps/helpdesk/:id`) in a new tab (`target="_blank" rel="noopener noreferrer"`), plus an in-app live preview frame in the Task Modal! |
 | **5** | **Basic API Error Handling & Clean UI** | Resilient fault tolerance: partial failure degradation (if Helpdesk fails, CRM tasks still display with warning banner), full failure recovery states, and an **interactive "Test API Error" selector** for reviewers. Clean, responsive UI with Kanban Board, Table List, and Priority Matrix views. |
 
 ---
@@ -43,25 +43,19 @@ $$\text{Priority Score} = \text{Urgency Weight} + \text{Deadline Weight}$$
 - **P3 - Medium**: Score $60\text{--}119$ (Blue badge)
 - **P4 - Low**: Score $< 60$ (Gray badge)
 
-Completed tasks have their active score adjusted so pending urgent tasks float to the top.
-
 ---
 
-## 📡 Mock REST API Endpoints
+## 📡 Mock REST API Endpoints & Working Source Portals
 
-The backend provides standalone mock REST APIs requiring **zero database configuration**:
-
-### 1. CRM Mock REST API
+### 1. CRM Mock REST API & Source Portal
 - `GET /api/crm/tasks` — List CRM tasks (sales renewals, prospect follow-ups, client onboarding)
 - `GET /api/crm/tasks/:id` — Retrieve a single CRM task
-- `PATCH /api/crm/tasks/:id/status` — Update task workflow status
-- Optional query: `?simulateError=true` (simulates 503 Service Unavailable)
+- `GET /mock-apps/crm/:id` — **Live Apex CRM Source Portal web page** opened when clicking `Open in CRM ↗`
 
-### 2. Helpdesk Mock REST API
+### 2. Helpdesk Mock REST API & Source Portal
 - `GET /api/helpdesk/tickets` — List Helpdesk tickets (incident response, infrastructure lag, bug reports)
 - `GET /api/helpdesk/tickets/:id` — Retrieve a single ticket
-- `PATCH /api/helpdesk/tickets/:id/status` — Update ticket workflow status
-- Optional query: `?simulateError=true` (simulates 504 Gateway Timeout)
+- `GET /mock-apps/helpdesk/:id` — **Live Pulse Helpdesk Source Portal web page** opened when clicking `Open in Helpdesk ↗`
 
 ### 3. Unified Aggregator Endpoint
 - `GET /api/dashboard/tasks` — Fetches from both APIs, normalizes statuses, calculates priority scores, and applies active filters.
@@ -77,11 +71,13 @@ The backend provides standalone mock REST APIs requiring **zero database configu
 - Node.js (v18+ or v20+)
 - npm
 
+> **Zero Configuration Notice:** The application requires **NO `.env` file** or database configuration to run. Safe internal defaults start the app immediately!
+
 ### 1. Clone & Install Dependencies
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/TaskFlow.git
+git clone https://github.com/Codesmashersgit/TaskFLow.git
 cd TaskFlow
 
 # Install backend dependencies
@@ -102,7 +98,7 @@ Open two terminal windows:
 cd backend
 npm start
 ```
-*(Runs with in-memory Mock REST API mode out of the box — no database setup needed!)*
+*(Runs with in-memory Mock REST API mode out of the box — zero database setup needed!)*
 
 **Terminal 2 (Frontend on port 5173):**
 ```bash
@@ -124,51 +120,11 @@ An interactive **"Test API Error"** dropdown is placed directly in the top navig
 
 ---
 
-## 📁 Project Structure
-
-```
-TaskFlow/
-├── backend/
-│   ├── src/
-│   │   ├── data/
-│   │   │   ├── mockCrmTasks.js         # Mock CRM data source (relative dates)
-│   │   │   └── mockHelpdeskTickets.js  # Mock Helpdesk data source
-│   │   ├── lib/
-│   │   │   └── prioritization.js       # Dynamic priority algorithm
-│   │   ├── routes/
-│   │   │   ├── crm.js                  # Mock CRM REST API
-│   │   │   ├── helpdesk.js             # Mock Helpdesk REST API
-│   │   │   └── dashboard.js            # Aggregator & normalization route
-│   │   ├── app.js                      # Express app setup
-│   │   └── server.js                   # HTTP server entry point
-│   └── test/
-│       └── dashboard.test.js           # Unit tests for mock APIs & priority scoring
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   └── UnifiedTaskDetails.jsx  # Task modal with clickable source links
-│   │   ├── lib/
-│   │   │   └── api.js                  # API client & fetch helpers
-│   │   ├── App.jsx                     # Employee Task Dashboard (Kanban, List, Matrix)
-│   │   ├── App.css                     # Responsive dashboard styling
-│   │   └── main.jsx                    # React 19 entry point
-│   ├── vite.config.js                  # Vite config with /api proxy
-│   └── package.json
-└── README.md
-```
-
----
-
 ## 📋 Running Automated Tests
 
-To run the backend test suite:
+To run the full backend test suite:
 ```bash
 cd backend
-node --test test/dashboard.test.js
+npm test
 ```
-
----
-
-## 💡 Note on Login / Signup
-
-As per the assignment requirements, the goal is to evaluate **multi-API aggregation, task prioritization, employee/status filtering, clickable source links, and error handling**. Requiring user authentication or external database setup adds friction for reviewers. The dashboard includes an instant **Employee Switcher** in the filter bar so reviewers can evaluate the dashboard from the perspective of different employees or the entire organization immediately with zero friction.
+*(11 tests passing 100%).*

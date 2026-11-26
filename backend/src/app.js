@@ -4,6 +4,7 @@ const healthRouter = require('./routes/health')
 const createCrmRouter = require('./routes/crm')
 const createHelpdeskRouter = require('./routes/helpdesk')
 const createDashboardRouter = require('./routes/dashboard')
+const createMockAppsRouter = require('./routes/mockApps')
 const { errorHandler } = require('./middleware/error-handler')
 
 function createApp({
@@ -25,6 +26,9 @@ function createApp({
     },
   }))
   app.use(express.json({ limit: '10kb' }))
+
+  // Mock Source Applications (Live, responsive HTML portals for CRM & Helpdesk)
+  app.use('/mock-apps', createMockAppsRouter())
 
   // Mock REST APIs & Unified Dashboard endpoints (Standalone & zero DB dependency)
   app.use('/api/crm', createCrmRouter())

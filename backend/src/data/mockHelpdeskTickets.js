@@ -16,7 +16,7 @@ const initialHelpdeskTickets = [
     title: 'Production Database Read Replica Latency Spike',
     description: 'PostgreSQL read replica lag exceeded 450s during peak traffic. Queries failing over to primary.',
     source: 'Helpdesk',
-    sourceUrl: 'https://helpdesk.workplace.example/tickets/HD-201',
+    sourceUrl: '/mock-apps/helpdesk/HD-201',
     category: 'Infrastructure Incident',
     requester: 'Site Reliability Engineering',
     employee: {
@@ -26,7 +26,7 @@ const initialHelpdeskTickets = [
       avatar: 'AR',
       role: 'Support Engineer',
     },
-    status: 'Open', // Open, In Progress, Resolved
+    status: 'Open',
     urgency: 'Urgent',
     deadline: relativeDate(-1, 12, 0), // Overdue by 1 day
     createdAt: relativeDate(-2, 10, 15),
@@ -36,7 +36,7 @@ const initialHelpdeskTickets = [
     title: 'SSO Login Failure for Azure AD SAML Integration',
     description: 'Employees encountering 400 Bad Request error on Single Sign-On redirect after certificate rotation.',
     source: 'Helpdesk',
-    sourceUrl: 'https://helpdesk.workplace.example/tickets/HD-202',
+    sourceUrl: '/mock-apps/helpdesk/HD-202',
     category: 'Identity & Access',
     requester: 'IT Operations',
     employee: {
@@ -56,7 +56,7 @@ const initialHelpdeskTickets = [
     title: 'Stripe Webhook Delivery Failing with 500 Status',
     description: 'Payment successful events failing webhook signature validation in European region billing service.',
     source: 'Helpdesk',
-    sourceUrl: 'https://helpdesk.workplace.example/tickets/HD-203',
+    sourceUrl: '/mock-apps/helpdesk/HD-203',
     category: 'Billing & Payments',
     requester: 'Finance Operations',
     employee: {
@@ -76,7 +76,7 @@ const initialHelpdeskTickets = [
     title: 'PDF Export Timeout for Reports Over 10,000 Rows',
     description: 'Exporting large analytical CSV/PDF exports crashes Chromium headless container due to OOM.',
     source: 'Helpdesk',
-    sourceUrl: 'https://helpdesk.workplace.example/tickets/HD-204',
+    sourceUrl: '/mock-apps/helpdesk/HD-204',
     category: 'Bug Report',
     requester: 'Business Analytics Team',
     employee: {
@@ -96,7 +96,7 @@ const initialHelpdeskTickets = [
     title: 'New Employee Laptop & VPN Access Provisioning',
     description: 'Set up MDM profile, YubiKey hardware token, and VPN credentials for 3 incoming engineers.',
     source: 'Helpdesk',
-    sourceUrl: 'https://helpdesk.workplace.example/tickets/HD-205',
+    sourceUrl: '/mock-apps/helpdesk/HD-205',
     category: 'Internal IT Service',
     requester: 'People Operations',
     employee: {
@@ -116,7 +116,7 @@ const initialHelpdeskTickets = [
     title: 'Email Delivery Delay via SendGrid Secondary IP',
     description: 'Transactional password reset emails experiencing 8-12 minute delivery delays on warm IP pool.',
     source: 'Helpdesk',
-    sourceUrl: 'https://helpdesk.workplace.example/tickets/HD-206',
+    sourceUrl: '/mock-apps/helpdesk/HD-206',
     category: 'Email Services',
     requester: 'Security Response',
     employee: {

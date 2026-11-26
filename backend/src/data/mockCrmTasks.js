@@ -16,7 +16,7 @@ const initialCrmTasks = [
     title: 'Enterprise Q4 Contract Renewal - Apex Global',
     description: 'Finalize SLA addendum and pricing terms for 450 enterprise seats before quarter end.',
     source: 'CRM',
-    sourceUrl: 'https://crm.workplace.example/deals/CRM-101',
+    sourceUrl: '/mock-apps/crm/CRM-101',
     customer: 'Apex Global Logistics',
     dealValue: '$120,000',
     employee: {
@@ -26,7 +26,7 @@ const initialCrmTasks = [
       avatar: 'SC',
       role: 'Account Executive',
     },
-    status: 'Pending', // Pending, In Progress, Completed
+    status: 'Pending',
     urgency: 'Urgent',
     deadline: relativeDate(-1, 15, 0), // Overdue by 1 day
     createdAt: relativeDate(-5, 9, 30),
@@ -36,7 +36,7 @@ const initialCrmTasks = [
     title: 'Onboarding Kickoff Meeting - Nimbus Cloud',
     description: 'Conduct architecture handoff and technical onboarding sync with CTO & engineering leads.',
     source: 'CRM',
-    sourceUrl: 'https://crm.workplace.example/deals/CRM-102',
+    sourceUrl: '/mock-apps/crm/CRM-102',
     customer: 'Nimbus Cloud Systems',
     dealValue: '$48,000',
     employee: {
@@ -56,7 +56,7 @@ const initialCrmTasks = [
     title: 'Follow-up on Stalled Pilot - BlueWave Health',
     description: 'Reach out to decision maker regarding pilot feedback and security compliance signoff.',
     source: 'CRM',
-    sourceUrl: 'https://crm.workplace.example/deals/CRM-103',
+    sourceUrl: '/mock-apps/crm/CRM-103',
     customer: 'BlueWave Health Tech',
     dealValue: '$65,000',
     employee: {
@@ -76,7 +76,7 @@ const initialCrmTasks = [
     title: 'Annual Account Health Review - Quantum Dynamics',
     description: 'Evaluate feature adoption metrics, NPS feedback, and prepare expansion proposal.',
     source: 'CRM',
-    sourceUrl: 'https://crm.workplace.example/deals/CRM-104',
+    sourceUrl: '/mock-apps/crm/CRM-104',
     customer: 'Quantum Dynamics Inc',
     dealValue: '$90,000',
     employee: {
@@ -96,7 +96,7 @@ const initialCrmTasks = [
     title: 'Inbound Lead Qualification - Lumina Media',
     description: 'Review RFP submission from marketing director and schedule discovery call.',
     source: 'CRM',
-    sourceUrl: 'https://crm.workplace.example/deals/CRM-105',
+    sourceUrl: '/mock-apps/crm/CRM-105',
     customer: 'Lumina Media Group',
     dealValue: '$32,000',
     employee: {
@@ -116,7 +116,7 @@ const initialCrmTasks = [
     title: 'Security Questionnaire Review - FinSecure Corp',
     description: 'Collaborate with InfoSec team to complete SOC-2 vendor evaluation form.',
     source: 'CRM',
-    sourceUrl: 'https://crm.workplace.example/deals/CRM-106',
+    sourceUrl: '/mock-apps/crm/CRM-106',
     customer: 'FinSecure Corp',
     dealValue: '$150,000',
     employee: {
@@ -133,7 +133,6 @@ const initialCrmTasks = [
   },
 ]
 
-// In-memory mutable store so user can update statuses without needing a DB
 let crmTasks = JSON.parse(JSON.stringify(initialCrmTasks))
 
 function getCrmTasks() {

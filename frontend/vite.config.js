@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': 'http://localhost:5001',
+      '/mock-apps': 'http://localhost:5001',
     },
   },
 })

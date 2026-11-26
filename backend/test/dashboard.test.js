@@ -2,7 +2,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 const { getCrmTasks, updateCrmTaskStatus } = require('../src/data/mockCrmTasks')
 const { getHelpdeskTickets, updateHelpdeskTicketStatus } = require('../src/data/mockHelpdeskTickets')
-const { calculatePriority, getUrgencyWeight, getDeadlineInfo } = require('../src/lib/prioritization')
+const { calculatePriority } = require('../src/lib/prioritization')
 
 test('CRM mock tasks return valid fields and clickable source links', () => {
   const tasks = getCrmTasks()
@@ -10,7 +10,7 @@ test('CRM mock tasks return valid fields and clickable source links', () => {
   for (const t of tasks) {
     assert.ok(t.id.startsWith('CRM-'))
     assert.ok(t.source === 'CRM')
-    assert.ok(t.sourceUrl.includes('crm.'))
+    assert.ok(t.sourceUrl.includes('/crm/'))
     assert.ok(t.employee?.id)
     assert.ok(t.employee?.name)
     assert.ok(['Urgent', 'High', 'Medium', 'Low'].includes(t.urgency))
@@ -24,7 +24,7 @@ test('Helpdesk mock tickets return valid fields and clickable source links', () 
   for (const t of tickets) {
     assert.ok(t.id.startsWith('HD-'))
     assert.ok(t.source === 'Helpdesk')
-    assert.ok(t.sourceUrl.includes('helpdesk.'))
+    assert.ok(t.sourceUrl.includes('/helpdesk/'))
     assert.ok(t.employee?.id)
     assert.ok(t.employee?.name)
     assert.ok(['Urgent', 'High', 'Medium', 'Low'].includes(t.urgency))
