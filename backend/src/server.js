@@ -33,14 +33,23 @@ const app = createApp({
 })
 
 async function start() {
-  await initializeDatabase()
+  try {
+    await initializeDatabase()
+    console.log('Database connected successfully.')
+  } catch (dbError) {
+    console.warn(`Database connection skipped (${dbError.message}). Running with in-memory Mock REST API mode for CRM & Helpdesk.`)
+  }
+
   const server = app.listen(config.port, () => {
     console.log(`TaskFlow API listening on port ${config.port}`)
+    console.log(`- Mock CRM API: http://localhost:${config.port}/api/crm/tasks`)
+    console.log(`- Mock Helpdesk API: http://localhost:${config.port}/api/helpdesk/tickets`)
+    console.log(`- Dashboard Aggregator: http://localhost:${config.port}/api/dashboard/tasks`)
   })
 
   const shutdown = async () => {
     server.close()
-    await closeDatabase()
+    await closeDatabase().catch(() => {})
   }
   process.once('SIGINT', shutdown)
   process.once('SIGTERM', shutdown)

@@ -1,17 +1,14 @@
 const express = require('express')
 const cors = require('cors')
 const healthRouter = require('./routes/health')
-const authRouter = require('./routes/auth')
-const taskRouter = require('./routes/tasks')
-const projectRouter = require('./routes/projects')
+const createCrmRouter = require('./routes/crm')
+const createHelpdeskRouter = require('./routes/helpdesk')
+const createDashboardRouter = require('./routes/dashboard')
 const { errorHandler } = require('./middleware/error-handler')
 
 function createApp({
   frontendOrigin = 'http://localhost:5173',
   frontendOrigins,
-  jwtSecret = process.env.JWT_SECRET,
-  jwtExpiresIn = process.env.JWT_EXPIRES_IN || '1d',
-  isProduction = process.env.NODE_ENV === 'production',
   initializeRequest,
   expressApp,
 } = {}) {
@@ -28,20 +25,26 @@ function createApp({
     },
   }))
   app.use(express.json({ limit: '10kb' }))
+
+  // Mock REST APIs & Unified Dashboard endpoints (Standalone & zero DB dependency)
+  app.use('/api/crm', createCrmRouter())
+  app.use('/api/helpdesk', createHelpdeskRouter())
+  app.use('/api/dashboard', createDashboardRouter())
+
   if (initializeRequest) {
-    app.use('/api', async (_req, _res, next) => {
+    app.use('/api/health', async (_req, _res, next) => {
       try { await initializeRequest(); next() } catch (error) { next(error) }
     })
   }
+
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader('Referrer-Policy', 'no-referrer')
     next()
   })
+
   app.use('/api/health', healthRouter)
-  app.use('/api/auth', authRouter({ jwtSecret, jwtExpiresIn, isProduction }))
-  app.use('/api/tasks', taskRouter({ jwtSecret }))
-  app.use('/api/projects', projectRouter({ jwtSecret }))
+
   app.use((_req, _res, next) => {
     const error = new Error('Route not found')
     error.statusCode = 404
